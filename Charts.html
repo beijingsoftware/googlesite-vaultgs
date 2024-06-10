@@ -1,0 +1,99 @@
+<script type="text/babel">
+    const DonutChart = ({ id, data, options }) => {
+        useEffect(() => {
+            const loadGoogleCharts = () => {
+                return new Promise((resolve, reject) => {
+                    if (!document.getElementById("google-charts-loader")) {
+                        const script = document.createElement("script")
+                        script.id = "google-charts-loader"
+                        script.src = "https://www.gstatic.com/charts/loader.js"
+                        script.async = true
+                        script.onload = resolve
+                        script.onerror = reject
+                        document.body.appendChild(script)
+                    } else {
+                        resolve()
+                    }
+                })
+            }
+
+            const initializeChart = () => {
+                google.charts.load("current", { packages: ["corechart"] })
+                google.charts.setOnLoadCallback(drawChart)
+            }
+
+            const drawChart = () => {
+                if (data) {
+                    const formattedData = google.visualization.arrayToDataTable(data)
+                    const chartOptions = { ...options, pieHole: 0.4 }
+                    const chart = new google.visualization.PieChart(
+                        document.getElementById(`donutchart${id}`)
+                    )
+                    chart.draw(formattedData, chartOptions)
+                }
+            }
+
+            loadGoogleCharts()
+                .then(initializeChart)
+                .catch((error) => {
+                    console.error("Failed to load Google Charts:", error)
+                })
+        }, [id, data, options])
+
+        return (
+            <div
+                id={`donutchart${id}`}
+                style={{ width: options.width, height: options.height }}
+            ></div>
+        )
+    }
+
+    const LineChart = ({ id, data, options }) => {
+        useEffect(() => {
+            const loadGoogleCharts = () => {
+                return new Promise((resolve, reject) => {
+                    if (!document.getElementById("google-charts-loader")) {
+                        const script = document.createElement("script")
+                        script.id = "google-charts-loader"
+                        script.src = "https://www.gstatic.com/charts/loader.js"
+                        script.async = true
+                        script.onload = resolve
+                        script.onerror = reject
+                        document.body.appendChild(script)
+                    } else {
+                        resolve()
+                    }
+                })
+            }
+
+            const initializeChart = () => {
+                google.charts.load("current", { packages: ["corechart"] })
+                google.charts.setOnLoadCallback(drawChart)
+            }
+
+            const drawChart = () => {
+                if (data) {
+                    const formattedData = google.visualization.arrayToDataTable(data)
+                    const chartOptions = options
+                    const chart = new google.visualization.LineChart(
+                        document.getElementById(`linechart${id}`)
+                    )
+                    chart.draw(formattedData, chartOptions)
+                }
+            }
+
+            loadGoogleCharts()
+                .then(initializeChart)
+                .catch((error) => {
+                    console.error("Failed to load Google Charts:", error)
+                })
+        }, [id, data, options])
+
+        return (
+            <div
+                id={`linechart${id}`}
+                style={{ width: options.width, height: options.height }}
+            ></div>
+        )
+    }
+</script>
