@@ -1,0 +1,909 @@
+<script type="text/babel">
+    const { Table, Button, Modal, Form } = ReactBootstrap
+
+    const EntryView = () => {
+        const { sessionData, updateSessionData, setSessionData, loading } = useContext(AppContext)
+        const [databaseKey, setDatabaseKey] = useState(null)
+        const [columnData, setColumnData] = useState(null)
+        const [showAddModal, setShowAddModal] = useState(false)
+        const [needRefresh, setNeedRefresh] = useState(false)
+
+        // Function to toggle the needRefresh flag
+        const toggleRefresh = () => {
+            setNeedRefresh((prev) => !prev)
+        }
+
+        useEffect(() => {
+            const initializeEntryView = async () => {
+                if (!sessionData.isEntryViewInitialized) {
+                    try {
+                        await setSessionData((prev) => ({
+                            ...prev,
+                            isEntryViewInitialized: true,
+                            entryViewAlerts: [],
+                        }))
+
+                        await updateEntryView()
+                    } catch (error) {
+                        addAlert(error)
+                    }
+                }
+            }
+
+            initializeEntryView()
+            updateDatabaseKey()
+        }, [sessionData.isEntryViewInitialized])
+
+        const updateDatabaseKey = () => {
+            if (sessionData.databaseData && sessionData.selectedDatabase) {
+                const database = sessionData.databaseData.databases.find(
+                    (d) => d.name === sessionData.selectedDatabase
+                )
+
+                setDatabaseKey(database.key)
+            }
+            if (!sessionData.selectedDatabase) {
+                setDatabaseKey(null)
+            }
+        }
+
+        const updateColumnData = () => {
+            if (
+                sessionData.databaseData &&
+                sessionData.selectedDatabase &&
+                sessionData.selectedTable
+            ) {
+                const database = sessionData.databaseData.databases.find(
+                    (d) => d.name === sessionData.selectedDatabase
+                )
+
+                const table = database.tables.find((t) => t.name === sessionData.selectedTable)
+
+                setColumnData(table.columns)
+            }
+            if (!sessionData.selectedTable) {
+                setColumnData(null)
+            }
+        }
+
+        useEffect(() => {
+            const loadTableDropdown = async () => {
+                if (sessionData.selectedDatabase) {
+                    await updateTableDropdown()
+                }
+            }
+
+            loadTableDropdown()
+            updateDatabaseKey()
+        }, [sessionData.selectedDatabase])
+
+        useEffect(() => {
+            updateColumnData()
+        }, [sessionData.selectedTable])
+
+        const updateEntryView = async () => {
+            try {
+                await updateSessionData()
+                await updateDatabaseDropdown()
+                await updateTableDropdown()
+            } catch (error) {
+                addAlert(error)
+            }
+        }
+
+        const updateDatabaseDropdown = async () => {
+            const keys = sessionData.userData.keys
+            try {
+                const databaseData = await Utilities.runScript("getDatabasesData", [keys])
+                const dropdownOptions = databaseData.databases.map((db) => db.name)
+                await setSessionData((prev) => ({
+                    ...prev,
+                    databaseData: databaseData,
+                    databaseDropdownOptions: dropdownOptions,
+                }))
+
+                if (sessionData.selectedDatabase) {
+                    await updateTableDropdown()
+                }
+            } catch (error) {
+                addAlert(error)
+            }
+        }
+
+        const updateTableDropdown = async () => {
+            var dropdownOptions = []
+            if (sessionData.databaseData && sessionData.selectedDatabase) {
+                const database = sessionData.databaseData.databases.find(
+                    (d) => d.name === sessionData.selectedDatabase
+                )
+
+                dropdownOptions = database.tables.map((t) => t.name)
+            }
+
+            setSessionData((prev) => ({
+                ...prev,
+                tableDropdownOptions: dropdownOptions,
+            }))
+        }
+
+        const refreshButton = (
+            <Button variant="dark" onClick={updateEntryView}>
+                <i className="fas fa-sync-alt"></i>
+            </Button>
+        )
+
+        const addButton = (
+            <Button
+                variant="dark"
+                onClick={() => {
+                    if (sessionData.selectedTable) setShowAddModal(true)
+                }}
+            >
+                <i className="fas fa-plus"></i>
+            </Button>
+        )
+
+        const addAlert = (error) => {
+            setSessionData((prev) => ({
+                ...prev,
+                entryViewAlerts: [
+                    ...prev.entryViewAlerts,
+                    { message: error.message || "An error occurred", color: "danger" },
+                ],
+            }))
+        }
+
+        const removeAlert = (index) => {
+            setSessionData((prev) => ({
+                ...prev,
+                entryViewAlerts: prev.entryViewAlerts.filter((_, idx) => idx !== index),
+            }))
+        }
+
+        const alerts = sessionData.entryViewAlerts?.map((alert, index) => (
+            <AlertMessage
+                key={index}
+                messageText={alert.message}
+                color={alert.color}
+                onDismiss={() => removeAlert(index)}
+            />
+        ))
+
+        return (
+            <Panel headerText="Entries" headerButtons={[addButton, refreshButton]}>
+                {alerts}
+                <div className="d-flex justify-content-between align-items-center">
+                    <Dropdown
+                        options={sessionData.databaseDropdownOptions}
+                        selectedOption={sessionData.selectedDatabase}
+                        setSelectedOption={(d) => {
+                            if (d !== sessionData.selectedDatabase) {
+                                setSessionData((prev) => ({
+                                    ...prev,
+                                    selectedDatabase: d,
+                                    selectedTable: null,
+                                }))
+                            }
+                        }}
+                        defaultText="Select a Database"
+                    ></Dropdown>
+                    <Dropdown
+                        options={sessionData.tableDropdownOptions}
+                        selectedOption={sessionData.selectedTable}
+                        setSelectedOption={(t) => {
+                            if (t !== sessionData.selectedTable) {
+                                setSessionData((prev) => ({
+                                    ...prev,
+                                    selectedTable: t,
+                                }))
+                            }
+                        }}
+                        defaultText="Select a Table"
+                    ></Dropdown>
+                </div>
+                <hr />
+                <LoadingPanel loading={loading} />
+                {databaseKey && sessionData.selectedTable && (
+                    <TableQuery
+                        databaseKey={databaseKey}
+                        tableName={sessionData.selectedTable}
+                        needRefresh={needRefresh}
+                    />
+                )}
+                {sessionData.selectedEntry && (
+                    <EntryModal
+                        selectedDatabase={sessionData.selectedDatabase}
+                        selectedTable={sessionData.selectedTable}
+                        selectedEntry={sessionData.selectedEntry}
+                        updateEntryView={updateEntryView}
+                        columnData={columnData}
+                        toggleRefresh={toggleRefresh}
+                    />
+                )}
+                {showAddModal && (
+                    <AddEntryModal
+                        selectedDatabase={sessionData.selectedDatabase}
+                        selectedTable={sessionData.selectedTable}
+                        updateEntryView={updateEntryView}
+                        columnData={columnData}
+                        toggleRefresh={toggleRefresh}
+                        onShow={() => setShowAddModal(true)}
+                        onHide={() => setShowAddModal(false)}
+                    />
+                )}
+            </Panel>
+        )
+    }
+
+    const TableQuery = ({ databaseKey, tableName, needRefresh }) => {
+        const [limit, setLimit] = useState(20)
+        const [page, setPage] = useState(1)
+        const [loading, setLoading] = useState(true)
+        const [alerts, setAlerts] = useState([])
+        const [header, setHeader] = useState([])
+        const [pageData, setPageData] = useState([])
+        const [customPage, setCustomPage] = useState("")
+        const [sortColumn, setSortColumn] = useState(null)
+        const [ascending, setAscending] = useState(true)
+        const { sessionData, setSessionData, updateSessionData } = useContext(AppContext)
+
+        useEffect(() => {
+            const updateTable = async () => {
+                if (!databaseKey) return
+                setLoading(true)
+                try {
+                    const result = await Utilities.runScript("EVALUATE", [
+                        {
+                            key: databaseKey,
+                            action: "read",
+                            type: "table",
+                            table: tableName,
+                            page: page,
+                            limit: limit,
+                            list: true,
+                            columnInfo: true,
+                            sortBy: sortColumn,
+                            ascending: ascending,
+                        },
+                    ])
+                    const header = result.columns.map((col) => col.name)
+                    setHeader(header)
+                    setPageData(result.data)
+                    setLoading(false)
+                    setCustomPage(page.toString()) // Set the input field back to the current page number
+                } catch (error) {
+                    setAlerts((prevAlerts) => [
+                        ...prevAlerts,
+                        { message: error.message, color: "danger" },
+                    ])
+                } finally {
+                    setLoading(false)
+                }
+            }
+            updateTable()
+        }, [databaseKey, tableName, page, limit, sortColumn, ascending, needRefresh])
+
+        const handleRowClick = (row) => {
+            setSessionData((prev) => ({
+                ...prev,
+                selectedEntry: row[0],
+            }))
+        }
+
+        const handleNextPage = () => {
+            setPage(page + 1)
+        }
+
+        const handlePrevPage = () => {
+            if (page > 1) {
+                setPage(page - 1)
+            }
+        }
+
+        const handleCustomPageChange = (e) => {
+            setCustomPage(e.target.value)
+        }
+
+        const handleGoToPage = () => {
+            const pageNumber = parseInt(customPage, 10)
+            if (!isNaN(pageNumber) && pageNumber > 0) {
+                setPage(pageNumber)
+            }
+        }
+
+        const handleKeyPress = (e) => {
+            if (e.key === "Enter") {
+                handleGoToPage()
+            }
+        }
+
+        const handlePageSizeChange = (pageSize) => {
+            setLimit(parseInt(pageSize))
+            setPage(1) // Reset page number when page size changes
+        }
+
+        const handleSortColumnChange = (columnName) => {
+            setSortColumn(columnName)
+        }
+
+        const handleOrderChange = (option) => {
+            if (option == "true") {
+                setAscending(true)
+            } else {
+                setAscending(false)
+            }
+        }
+
+        const removeAlert = (index) => {
+            setAlerts((prevAlerts) => prevAlerts.filter((_, idx) => idx !== index))
+        }
+
+        return (
+            <>
+                {alerts.map((alert, index) => (
+                    <AlertMessage
+                        key={index}
+                        messageText={alert.message}
+                        color={alert.color}
+                        onDismiss={() => removeAlert(index)}
+                    />
+                ))}
+                <div className="d-flex justify-content-between align-items-center mb-3">
+                    <Dropdown
+                        options={[10, 20, 30, 40, 50, 60, 70, 80, 90, 100]}
+                        selected={limit}
+                        setSelectedOption={(pageSize) => handlePageSizeChange(pageSize)}
+                        defaultText="Page Size"
+                    />
+                    <Dropdown
+                        options={header}
+                        selected={sortColumn}
+                        setSelectedOption={(columnName) => handleSortColumnChange(columnName)}
+                        defaultText="Sort By"
+                    />
+                    <Dropdown
+                        options={["true", "false"]}
+                        selected={sortColumn}
+                        setSelectedOption={(option) => handleOrderChange(option)}
+                        defaultText="Ascending"
+                    />
+                </div>
+
+                <LoadingPanel loading={loading} />
+                <DataTable data={[header, ...pageData]} onRowClick={handleRowClick} />
+                <div className="mt-3 d-flex justify-content-between align-items-center">
+                    <button
+                        className="btn btn-primary"
+                        onClick={handlePrevPage}
+                        disabled={page === 1}
+                    >
+                        Previous
+                    </button>
+                    <div className="d-flex align-items-center">
+                        <input
+                            type="text"
+                            value={customPage}
+                            onChange={handleCustomPageChange}
+                            onKeyPress={handleKeyPress}
+                            className="form-control form-control-sm me-2"
+                            style={{ width: "70px" }}
+                        />
+                        <button className="btn btn-primary btn-sm" onClick={handleGoToPage}>
+                            Go
+                        </button>
+                    </div>
+                    <button className="btn btn-primary" onClick={handleNextPage}>
+                        Next
+                    </button>
+                </div>
+            </>
+        )
+    }
+
+    const EntryModal = ({
+        selectedDatabase,
+        selectedTable,
+        selectedEntry,
+        updateEntryView,
+        columnData,
+        toggleRefresh,
+    }) => {
+        const { sessionData, setSessionData } = useContext(AppContext)
+        const [loading, setLoading] = useState(false)
+        const [alerts, setAlerts] = useState([])
+        const [fieldValues, setFieldValues] = useState({})
+
+        useEffect(() => {
+            updateFieldValues()
+        }, [selectedEntry])
+
+        useEffect(() => {
+            setFieldValues({})
+        }, [selectedTable])
+
+        const updateFieldValues = async () => {
+            if (selectedDatabase && selectedTable && selectedEntry) {
+                setLoading(true)
+                try {
+                    const database = sessionData.databaseData.databases.find(
+                        (d) => d.name === selectedDatabase
+                    )
+                    const result = await Utilities.runScript("EVALUATE", [
+                        {
+                            key: database.key,
+                            action: "read",
+                            type: "entry",
+                            table: selectedTable,
+                            id: selectedEntry,
+                            list: false,
+                        },
+                    ])
+                    const fieldValues = { ...result.data }
+                    // Parse JSON fields to string and set boolean fields to false if not set or if they are strings
+                    for (const column of columnData) {
+                        if (column.dataType === "json") {
+                            fieldValues[column.name] = JSON.stringify(
+                                fieldValues[column.name],
+                                null,
+                                2
+                            )
+                        } else if (column.dataType === "boolean") {
+                            if (typeof fieldValues[column.name] !== "boolean") {
+                                fieldValues[column.name] = false
+                            }
+                        }
+                    }
+                    setFieldValues(fieldValues)
+                } catch (error) {
+                    setAlerts((prevAlerts) => [
+                        ...prevAlerts,
+                        { message: error.message, color: "danger" },
+                    ])
+                } finally {
+                    setLoading(false)
+                }
+            }
+        }
+
+        const handleFieldChange = (name, value) => {
+            const column = columnData.find((column) => column.name === name)
+            if (column) {
+                let fieldValue
+                switch (column.dataType) {
+                    case "string":
+                    case "json":
+                        fieldValue = value // For strings and JSON, store as-is
+                        break
+                    case "integer":
+                        if (!isNaN(value) && Number.isInteger(Number(value))) {
+                            fieldValue = parseInt(value)
+                        } else {
+                            setAlerts((prevAlerts) => [
+                                ...prevAlerts,
+                                { message: `${name} must be a valid integer.`, color: "danger" },
+                            ])
+                            return
+                        }
+                        break
+                    case "float":
+                        if (!isNaN(value) && !Number.isNaN(parseFloat(value))) {
+                            fieldValue = parseFloat(value)
+                        } else {
+                            setAlerts((prevAlerts) => [
+                                ...prevAlerts,
+                                { message: `${name} must be a valid float.`, color: "danger" },
+                            ])
+                            return
+                        }
+                        break
+                    case "boolean":
+                        fieldValue = !!value // Ensure boolean value is set correctly
+                        break
+                    default:
+                        fieldValue = value
+                }
+                setFieldValues((prev) => ({
+                    ...prev,
+                    [name]: fieldValue,
+                }))
+            }
+        }
+
+        const handleSubmit = async (e) => {
+            e.preventDefault()
+            setLoading(true)
+
+            try {
+                const database = sessionData.databaseData.databases.find(
+                    (d) => d.name === selectedDatabase
+                )
+                const requestData = { ...fieldValues }
+                // Ensure all boolean fields are set to false if they are not present or if they are strings
+                for (const column of columnData) {
+                    if (
+                        column.dataType === "boolean" &&
+                        typeof requestData[column.name] !== "boolean"
+                    ) {
+                        requestData[column.name] = false
+                    } else if (column.dataType === "json") {
+                        try {
+                            requestData[column.name] = JSON.parse(requestData[column.name])
+                        } catch (error) {
+                            setAlerts((prevAlerts) => [
+                                ...prevAlerts,
+                                {
+                                    message: `${column.name} must be a valid JSON string.`,
+                                    color: "danger",
+                                },
+                            ])
+                            setLoading(false)
+                            return
+                        }
+                    }
+                }
+                await Utilities.runScript("EVALUATE", [
+                    {
+                        key: database.key,
+                        action: "update",
+                        type: "entry",
+                        table: selectedTable,
+                        id: selectedEntry,
+                        entry: requestData,
+                    },
+                ])
+                await updateEntryView()
+                setSessionData((prev) => ({
+                    ...prev,
+                    selectedEntry: null,
+                }))
+                toggleRefresh()
+            } catch (error) {
+                setAlerts((prevAlerts) => [
+                    ...prevAlerts,
+                    { message: error.message, color: "danger" },
+                ])
+            } finally {
+                setLoading(false)
+            }
+        }
+
+        const removeAlert = (index) => {
+            setAlerts((prevAlerts) => prevAlerts.filter((_, idx) => idx !== index))
+        }
+
+        const handleDelete = async () => {
+            if (window.confirm("Are you sure you want to delete this entry?")) {
+                setLoading(true)
+                try {
+                    const database = sessionData.databaseData.databases.find(
+                        (db) => db.name === selectedDatabase
+                    )
+
+                    const result = await Utilities.runScript("EVALUATE", [
+                        {
+                            key: database.key,
+                            action: "delete",
+                            type: "entry",
+                            table: selectedTable,
+                            id: selectedEntry,
+                        },
+                    ])
+
+                    await updateEntryView()
+                    setSessionData((prev) => ({
+                        ...prev,
+                        selectedEntry: null,
+                    }))
+                    toggleRefresh()
+                } catch (error) {
+                    setAlerts((prevAlerts) => [
+                        ...prevAlerts,
+                        { message: error.message, color: "danger" },
+                    ])
+                } finally {
+                    setLoading(false)
+                }
+            }
+        }
+
+        return (
+            <Modal
+                show={selectedDatabase && selectedTable && selectedEntry}
+                onHide={() => {
+                    setSessionData((prev) => ({
+                        ...prev,
+                        selectedEntry: null,
+                    }))
+                }}
+                size="xl"
+            >
+                <Modal.Header closeButton>
+                    <Modal.Title>Edit Entry</Modal.Title>
+                </Modal.Header>
+                <Modal.Body>
+                    {loading && <LoadingPanel loading={true} />}
+                    {alerts.map((alert, index) => (
+                        <AlertMessage
+                            key={index}
+                            messageText={alert.message}
+                            color={alert.color}
+                            onDismiss={() => removeAlert(index)}
+                        />
+                    ))}
+                    <Form onSubmit={handleSubmit}>
+                        {columnData &&
+                            columnData.map((column) => (
+                                <Form.Group controlId={column.name} key={column.name}>
+                                    <Form.Label>{column.name}</Form.Label>
+                                    {column.name === "id" ? (
+                                        <Form.Control
+                                            type="text"
+                                            value={fieldValues[column.name] || ""}
+                                            readOnly
+                                        />
+                                    ) : column.dataType === "boolean" ? (
+                                        <Form.Check
+                                            type="checkbox"
+                                            checked={fieldValues[column.name] || false}
+                                            onChange={(e) =>
+                                                handleFieldChange(column.name, e.target.checked)
+                                            }
+                                        />
+                                    ) : column.dataType === "integer" ||
+                                      column.dataType === "float" ? (
+                                        <Form.Control
+                                            type="number"
+                                            value={fieldValues[column.name] || ""}
+                                            onChange={(e) =>
+                                                handleFieldChange(column.name, e.target.value)
+                                            }
+                                            required={column.required}
+                                        />
+                                    ) : column.dataType === "json" ? (
+                                        <Form.Control
+                                            as="textarea"
+                                            rows={8}
+                                            value={fieldValues[column.name] || ""}
+                                            onChange={(e) =>
+                                                handleFieldChange(column.name, e.target.value)
+                                            }
+                                            required={column.required}
+                                        />
+                                    ) : (
+                                        <Form.Control
+                                            as="textarea"
+                                            value={fieldValues[column.name] || ""}
+                                            onChange={(e) =>
+                                                handleFieldChange(column.name, e.target.value)
+                                            }
+                                            required={column.required}
+                                        />
+                                    )}
+                                </Form.Group>
+                            ))}
+                        <hr />
+                        <div className="d-flex justify-content-between align-items-center">
+                            <Button variant="primary" type="submit" disabled={loading}>
+                                {loading ? "Updating..." : "Submit"}
+                            </Button>
+                            <Button variant="danger" onClick={handleDelete} disabled={loading}>
+                                Delete
+                            </Button>
+                        </div>
+                    </Form>
+                </Modal.Body>
+            </Modal>
+        )
+    }
+
+    const AddEntryModal = ({
+        selectedDatabase,
+        selectedTable,
+        updateEntryView,
+        columnData,
+        toggleRefresh,
+        onHide,
+    }) => {
+        const { sessionData, setSessionData } = useContext(AppContext)
+        const [loading, setLoading] = useState(false)
+        const [alerts, setAlerts] = useState([])
+        const [fieldValues, setFieldValues] = useState({})
+
+        useEffect(() => {
+            initializeFieldValues()
+        }, [selectedTable, columnData])
+
+        const initializeFieldValues = () => {
+            if (columnData && columnData.length > 0) {
+                const initialValues = {}
+                for (const column of columnData) {
+                    if (column.name === "id") {
+                        continue // Skip the 'id' field initialization
+                    }
+                    if (column.dataType === "json") {
+                        initialValues[column.name] = "{}"
+                    } else if (column.dataType === "boolean") {
+                        initialValues[column.name] = false
+                    } else {
+                        initialValues[column.name] = ""
+                    }
+                }
+                setFieldValues(initialValues)
+            }
+        }
+
+        const handleFieldChange = (name, value) => {
+            const column = columnData.find((column) => column.name === name)
+            if (column) {
+                let fieldValue
+                switch (column.dataType) {
+                    case "string":
+                    case "json":
+                        fieldValue = value
+                        break
+                    case "integer":
+                        if (!isNaN(value) && Number.isInteger(Number(value))) {
+                            fieldValue = parseInt(value)
+                        } else {
+                            setAlerts((prevAlerts) => [
+                                ...prevAlerts,
+                                { message: `${name} must be a valid integer.`, color: "danger" },
+                            ])
+                            return
+                        }
+                        break
+                    case "float":
+                        if (!isNaN(value) && !Number.isNaN(parseFloat(value))) {
+                            fieldValue = parseFloat(value)
+                        } else {
+                            setAlerts((prevAlerts) => [
+                                ...prevAlerts,
+                                { message: `${name} must be a valid float.`, color: "danger" },
+                            ])
+                            return
+                        }
+                        break
+                    case "boolean":
+                        fieldValue = !!value
+                        break
+                    default:
+                        fieldValue = value
+                }
+                setFieldValues((prev) => ({
+                    ...prev,
+                    [name]: fieldValue,
+                }))
+            }
+        }
+
+        const handleSubmit = async (e) => {
+            e.preventDefault()
+            setLoading(true)
+            try {
+                const database = sessionData.databaseData.databases.find(
+                    (d) => d.name === selectedDatabase
+                )
+                const requestData = { ...fieldValues }
+
+                // Ensure all boolean fields are set to false if they are not present or if they are strings
+                for (const column of columnData) {
+                    if (
+                        column.dataType === "boolean" &&
+                        typeof requestData[column.name] !== "boolean"
+                    ) {
+                        requestData[column.name] = false
+                    } else if (column.dataType === "json") {
+                        try {
+                            requestData[column.name] = JSON.parse(requestData[column.name])
+                        } catch (error) {
+                            setAlerts((prevAlerts) => [
+                                ...prevAlerts,
+                                {
+                                    message: `${column.name} must be a valid JSON string.`,
+                                    color: "danger",
+                                },
+                            ])
+                            setLoading(false)
+                            return
+                        }
+                    }
+                }
+
+                await Utilities.runScript("EVALUATE", [
+                    {
+                        key: database.key,
+                        action: "create",
+                        type: "entry",
+                        table: selectedTable,
+                        entry: requestData,
+                    },
+                ])
+                await updateEntryView()
+                toggleRefresh()
+                onHide()
+            } catch (error) {
+                setAlerts((prevAlerts) => [
+                    ...prevAlerts,
+                    { message: error.message, color: "danger" },
+                ])
+            } finally {
+                setLoading(false)
+            }
+        }
+
+        const removeAlert = (index) => {
+            setAlerts((prevAlerts) => prevAlerts.filter((_, idx) => idx !== index))
+        }
+
+        return (
+            <Modal show={selectedDatabase && selectedTable} onHide={onHide} size="xl">
+                <Modal.Header closeButton>
+                    <Modal.Title>Add Entry</Modal.Title>
+                </Modal.Header>
+                <Modal.Body>
+                    {loading && <LoadingPanel loading={true} />}
+                    {alerts.map((alert, index) => (
+                        <AlertMessage
+                            key={index}
+                            messageText={alert.message}
+                            color={alert.color}
+                            onDismiss={() => removeAlert(index)}
+                        />
+                    ))}
+                    <Form onSubmit={handleSubmit}>
+                        {columnData &&
+                            columnData.map((column) => (
+                                <Form.Group controlId={column.name} key={column.name}>
+                                    <Form.Label>{column.name}</Form.Label>
+                                    {column.dataType === "boolean" ? (
+                                        <Form.Check
+                                            type="checkbox"
+                                            checked={fieldValues[column.name] || false}
+                                            onChange={(e) =>
+                                                handleFieldChange(column.name, e.target.checked)
+                                            }
+                                        />
+                                    ) : column.dataType === "integer" ||
+                                      column.dataType === "float" ? (
+                                        <Form.Control
+                                            type="number"
+                                            value={fieldValues[column.name] || ""}
+                                            onChange={(e) =>
+                                                handleFieldChange(column.name, e.target.value)
+                                            }
+                                            required={column.required && column.name !== "id"}
+                                        />
+                                    ) : column.dataType === "json" ? (
+                                        <Form.Control
+                                            as="textarea"
+                                            rows={8}
+                                            value={fieldValues[column.name] || ""}
+                                            onChange={(e) =>
+                                                handleFieldChange(column.name, e.target.value)
+                                            }
+                                            required={column.required && column.name !== "id"}
+                                        />
+                                    ) : (
+                                        <Form.Control
+                                            as="textarea"
+                                            value={fieldValues[column.name] || ""}
+                                            onChange={(e) =>
+                                                handleFieldChange(column.name, e.target.value)
+                                            }
+                                            required={column.required && column.name !== "id"}
+                                        />
+                                    )}
+                                </Form.Group>
+                            ))}
+                        <hr />
+                        <div className="d-flex justify-content-end">
+                            <Button variant="primary" type="submit" disabled={loading}>
+                                {loading ? "Adding..." : "Add"}
+                            </Button>
+                        </div>
+                    </Form>
+                </Modal.Body>
+            </Modal>
+        )
+    }
+</script>
