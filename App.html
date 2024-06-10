@@ -1,0 +1,35 @@
+<script type="text/babel">
+    const { Switch, Route } = ReactRouterDOM
+    const { AppProvider } = window
+
+    function App() {
+        return (
+            <AppProvider>
+                <CustomNavbarWithRouter>
+                    <Switch>
+                        <Route path="/resetPassword">
+                            <ResetPassword />
+                        </Route>
+                        <PrivateRoute path="/dash" component={Dashboard} />
+                        <PrivateRoute path="/account" component={Account} />
+                        <PrivateRoute path="/databases" component={DatabaseView} />
+                        <PrivateRoute path="/tables" component={TableView} />
+                        <PrivateRoute path="/columns" component={ColumnView} />
+                        <PrivateRoute path="/entries" component={EntryView} />
+                        <PrivateRoute path="/query" component={QueryView} />
+                        <PrivateRoute path="/api" component={ApiView} />
+                        <Route path="/login">
+                            <Login />
+                        </Route>
+                        <Route path="/signup">
+                            <SignUp />
+                        </Route>
+                        <Route path="/">
+                            <Home />
+                        </Route>
+                    </Switch>
+                </CustomNavbarWithRouter>
+            </AppProvider>
+        )
+    }
+</script>
