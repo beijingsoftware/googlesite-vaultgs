@@ -1,0 +1,84 @@
+<script type="text/babel">
+    const { Form, Button, FormGroup, Row, Col } = ReactBootstrap
+
+    const QueryView = () => {
+        const [jsonInput, setJsonInput] = useState("")
+        const [results, setResults] = useState("")
+        const [alerts, setAlerts] = useState([])
+
+        const handleJsonChange = (e) => {
+            setJsonInput(e.target.value)
+        }
+
+        const validateAndProcessJson = async () => {
+            try {
+                const parsedJson = JSON.parse(jsonInput)
+
+                const results = await Utilities.runScript("EVALUATE", [parsedJson])
+
+                setResults(JSON.stringify(results, null, 4))
+                setAlerts([]) // Clear previous alerts if any
+            } catch (error) {
+                addAlert(error)
+            }
+        }
+
+        const addAlert = (error) => {
+            setAlerts((prevAlerts) => [
+                ...prevAlerts,
+                { message: error.message || "An error occurred", color: "danger" },
+            ])
+        }
+
+        const removeAlert = (index) => {
+            setAlerts(alerts.filter((_, idx) => idx !== index))
+        }
+
+        return (
+            <Panel headerText="Query">
+                <Row>
+                    <Col md={6}>
+                        <h2>Input JSON</h2>
+                        {alerts.map((alert, index) => (
+                            <AlertMessage
+                                key={index}
+                                messageText={alert.message}
+                                color={alert.color}
+                                onDismiss={() => removeAlert(index)}
+                            ></AlertMessage>
+                        ))}
+                        <Form>
+                            <Form.Group controlId="jsonInput">
+                                <Form.Control
+                                    as="textarea"
+                                    rows={10}
+                                    value={jsonInput}
+                                    onChange={handleJsonChange}
+                                    placeholder="Enter JSON here..."
+                                />
+                            </Form.Group>
+                            <hr />
+                            <Button onClick={validateAndProcessJson} variant="primary">
+                                Submit JSON
+                            </Button>
+                        </Form>
+                    </Col>
+                    <Col md={6}>
+                        <h2>Results</h2>
+                        <pre
+                            style={{
+                                // background: "#f4f4f4",
+                                border: "1px solid #ccc",
+                                // height: "400px",
+                                overflow: "auto",
+                                padding: "15px",
+                            }}
+                        >
+                            {results}
+                        </pre>
+                    </Col>
+                </Row>
+            </Panel>
+        )
+    }
+</script>
