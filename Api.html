@@ -1,0 +1,22 @@
+<script type="text/babel">
+    function ApiView() {
+        const { sessionData, updateSessionData, setSessionData, loading } = useContext(AppContext)
+
+        const apiKey = sessionData?.userData?.apiKey
+        const url =
+            "https://script.google.com/macros/s/AKfycbwko-uFw-FPPdSWtG5rIJd55hUZhp8kSxprtFMmQNXDqw-d2UOvMmvtAUM0kWcxFxqx/exec"
+
+        const textCodeData = {
+            title: "API Access",
+            description: `Your API Key: ${apiKey}`,
+            code: `POST /your-script-url\nContent-Type: application/json\n{\n "apiKey": "${apiKey}",\n "key": "your-spreadsheet-id",\n "action": "create",\n "type": "table",\n "table": "Users"\n}`,
+        }
+
+        return (
+            <Panel className="api-panel" headerText="API">
+                <h4>Url Endpoint: {url}</h4>
+                <TextCode {...textCodeData} />
+            </Panel>
+        )
+    }
+</script>
