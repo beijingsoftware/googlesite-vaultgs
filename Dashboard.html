@@ -1,0 +1,331 @@
+<script type="text/babel">
+    const { Container, Row, Col, Card } = ReactBootstrap
+    const { useState, useEffect, useContext } = ReactBootstrap
+    const { AppContext } = window
+
+    const Dashboard = () => {
+        const { sessionData, updateSessionData, setSessionData, loading } = useContext(AppContext)
+
+        useEffect(() => {
+            const loadDashboard = async () => {
+                if (!sessionData.isDashboardInitialized) {
+                    await setSessionData((prev) => ({
+                        ...prev,
+                        isDashboardInitialized: true,
+                        dashboardAlerts: [],
+                    }))
+                    updateDashboard()
+                }
+            }
+            loadDashboard()
+        }, [sessionData])
+
+        async function updateDashboard() {
+            try {
+                await updateSessionData()
+                const keys = sessionData.userData.keys
+                const databaseData = await Utilities.runScript("getDatabasesData", [keys])
+
+                var tableCount = 0
+                var entryCount = 0
+                for (const database of databaseData.databases) {
+                    tableCount += database.tables.length
+                    for (const table of database.tables) {
+                        entryCount += table.size
+                    }
+                }
+
+                const databaseSizeData = databaseData.databases.map((database) => {
+                    return [database.name, database.size]
+                })
+                databaseSizeData.unshift(["Name", "Size"])
+
+                var tableSizeData = [["Table Name", "Table Size"]]
+                for (const database of databaseData.databases) {
+                    for (const table of database.tables) {
+                        tableSizeData.push([table.name, table.size])
+                    }
+                }
+
+                var types = {
+                    string: 0,
+                    integer: 0,
+                    float: 0,
+                    boolean: 0,
+                    json: 0,
+                }
+
+                for (const database of databaseData.databases) {
+                    for (const table of database.tables) {
+                        for (const column of table.columns) {
+                            types[column.dataType] += 1
+                        }
+                    }
+                }
+
+                var typeCountData = Object.entries(types).map(([key, value]) => [key, value])
+                typeCountData.unshift(["Type Name", "Column Count"])
+
+                const dayOrder = ["sun", "mon", "tue", "wed", "thu", "fri", "sat"]
+                // Build the apiCallData array using the dayOrder array
+                const apiCallData = dayOrder.map((day) => [
+                    day.charAt(0).toUpperCase() + day.slice(1),
+                    sessionData.userData.apiCalls[day],
+                ])
+                // Unshift the header row
+                apiCallData.unshift(["Day", "API Calls"])
+
+                setSessionData((prev) => ({
+                    ...prev,
+                    databaseData: databaseData,
+                    connectionCount: databaseData.connections.successfulCount,
+                    databaseSizeData: databaseSizeData,
+                    tableSizeData: tableSizeData,
+                    typeCountData: typeCountData,
+                    apiCallData: apiCallData,
+                    tableCount: tableCount,
+                    entryCount: entryCount,
+                }))
+
+                if (databaseData.connections.failedCount > 0) {
+                    throw new Error(
+                        `Failed to connect to ${databaseData.connections.failedCount} database` +
+                            (databaseData.connections.failedCount > 1 ? "s" : "")
+                    )
+                }
+            } catch (error) {
+                addAlert(error)
+            }
+        }
+
+        function addAlert(error) {
+            setSessionData((prev) => ({
+                ...prev,
+                dashboardAlerts: [
+                    ...prev.dashboardAlerts,
+                    { message: error.message, color: "danger" },
+                ],
+            }))
+        }
+
+        function removeAlert(index) {
+            setSessionData((prev) => ({
+                ...prev,
+                dashboardAlerts: prev.dashboardAlerts.filter((_, idx) => idx !== index),
+            }))
+        }
+
+        const alerts = sessionData.dashboardAlerts?.map((alert, index) => (
+            <AlertMessage
+                key={index}
+                messageText={alert.message ? alert.message : "Error"}
+                color={alert.color}
+                onDismiss={() => removeAlert(index)}
+            />
+        ))
+
+        const donutOptions = {
+            fontName: "Helvetica",
+            backgroundColor: "transparent",
+            height: "600px",
+            width: "900px",
+            colors: [
+                theme.primary,
+                theme.success,
+                theme.danger,
+                theme.warning,
+                theme.info,
+                theme.light,
+            ],
+            legend: {
+                position: "bottom",
+                alignment: "center",
+                maxLines: 9999,
+                textStyle: {
+                    color: "#ffffff",
+                },
+            },
+            pieSliceText: "none",
+        }
+
+        const lineOptions = {
+            curveType: "function",
+            fontName: "Helvetica",
+            legend: { position: "bottom" },
+            height: "800px",
+            backgroundColor: theme.dark,
+            chartArea: {
+                backgroundColor: theme.dark,
+            },
+            legend: {
+                position: "bottom",
+                alignment: "center",
+                textStyle: {
+                    color: "#ffffff",
+                },
+            },
+            lineWidth: 5,
+            hAxis: {
+                textStyle: {
+                    color: "#ffffff",
+                },
+            },
+        }
+
+        const nestedPanels = [
+            [
+                <ValuePanel
+                    key="connections"
+                    loading={loading}
+                    value={sessionData?.connectionCount}
+                    description="Connected Databases"
+                />,
+                <ValuePanel
+                    key="tables"
+                    loading={loading}
+                    value={sessionData?.tableCount}
+                    description="Data Tables"
+                />,
+                <ValuePanel
+                    key="entries"
+                    loading={loading}
+                    value={sessionData?.entryCount}
+                    description="Data Entries"
+                />,
+            ],
+            [
+                <DonutPanel
+                    id="0"
+                    data={sessionData?.databaseSizeData}
+                    options={donutOptions}
+                    title={"Database Size"}
+                />,
+                <DonutPanel
+                    id="1"
+                    data={sessionData?.tableSizeData}
+                    options={donutOptions}
+                    title={"Table Size"}
+                />,
+                <DonutPanel
+                    id="2"
+                    data={sessionData?.typeCountData}
+                    options={donutOptions}
+                    title={"Data Types"}
+                />,
+            ],
+            [
+                <LineChartPanel
+                    id="0"
+                    data={sessionData?.apiCallData}
+                    options={lineOptions}
+                    title={"Api Access"}
+                />,
+            ],
+        ]
+
+        const refreshButton = (
+            <Button variant="dark" onClick={updateDashboard}>
+                <i className="fas fa-sync-alt"></i>
+            </Button>
+        )
+
+        return (
+            <Panel headerText="Dashboard" headerButtons={[refreshButton]}>
+                {nestedPanels.map((panelRow, index) => (
+                    <PanelRow key={index} nestedPanels={panelRow} />
+                ))}
+                {alerts}
+                <LoadingPanel loading={loading} />
+            </Panel>
+        )
+    }
+
+    const ValuePanel = ({ value, description }) => {
+        const loading = value === null || value === undefined
+
+        return (
+            <Panel className="value-panel">
+                <LoadingPanel loading={loading} />
+                <p className="value-panel-value">{loading ? "." : value}</p>
+                <p className="value-panel-description">{description}</p>
+            </Panel>
+        )
+    }
+
+    const DonutPanel = ({ id, data, options, title }) => {
+        const loading = data === null || data === undefined
+
+        return (
+            <Panel className="donut-panel">
+                <LoadingPanel loading={loading} />
+
+                <DonutChart id={id} data={data} options={options} />
+                <p className="panel-title">{title}</p>
+            </Panel>
+        )
+    }
+
+    const LineChartPanel = ({ id, data, options, title }) => {
+        const loading = data === null || data === undefined
+
+        return (
+            <Panel className="linechart-panel">
+                <LoadingPanel loading={loading} />
+                <p className="panel-title">{title}</p>
+                <LineChart id={id} data={data} options={options} />
+            </Panel>
+        )
+    }
+</script>
+
+<style>
+    .value-panel {
+        background-color: var(--bs-dark);
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        text-align: center;
+        color: white;
+        border: var(--bs-dark);
+    }
+
+    .value-panel-value {
+        font-size: 4em;
+        margin-bottom: -20px;
+        margin-top: -20px;
+    }
+
+    .value-panel-description {
+        font-size: 1.5em;
+        margin-bottom: -10px;
+    }
+
+    .panel-title {
+        font-size: 1.5em;
+        /* margin-bottom: -50px; */
+        z-index: 100;
+    }
+
+    .donut-panel {
+        background-color: var(--bs-dark);
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        text-align: center;
+        color: white;
+        border: var(--bs-dark);
+    }
+
+    .linechart-panel {
+        background-color: var(--bs-dark);
+        /* display: flex; */
+        /* flex-direction: column;
+        align-items: center; */
+        justify-content: center;
+        text-align: center;
+        color: white;
+        border: var(--bs-dark);
+    }
+</style>
