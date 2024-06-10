@@ -1,0 +1,98 @@
+<script type="text/babel">
+    function Account() {
+        const { sessionData, updateSessionData } = useContext(AppContext)
+        const user = sessionData.user
+        const [loading, setLoading] = useState(false)
+        const [updated, setUpdated] = useState(false)
+
+        async function handleUpdateSubmit(password, name, twoFactorAuth) {
+            try {
+                setLoading(true)
+                const valid = await Utilities.runScript("validateCredentials", [
+                    user.email,
+                    password,
+                ])
+
+                if (name !== user.name) {
+                    await Utilities.runScript("changeName", [user.email, name])
+                    user.name = name
+                }
+
+                if (twoFactorAuth !== user.twoFactorAuth) {
+                    await Utilities.runScript("changeTwoFactorAuth", [user.email, twoFactorAuth])
+                    user.twoFactorAuth = twoFactorAuth
+                }
+
+                await Utilities.runScript("logout")
+                await Utilities.runScript("login", [user])
+                setLoading(false)
+                setUpdated(true)
+                updateSessionData()
+            } catch (error) {
+                setLoading(false)
+                throw error
+            }
+        }
+
+        return (
+            <BlurredBackground imageSrc={SRC.hero}>
+                <div className="d-flex justify-content-center pt-5">
+                    <LoadingScreen loading={loading} />
+                    <AccountCard user={user} onSubmit={handleUpdateSubmit} />
+                    <UpdatedModal showModal={updated} setShowModal={setUpdated} />
+                </div>
+            </BlurredBackground>
+        )
+    }
+
+    function AccountCard({ user, onSubmit }) {
+        const [alerts, setAlerts] = useState([])
+        const [name, setName] = useState(user.name)
+        const [twoFactorEnabled, setTwoFactorEnabled] = useState(user.twoFactorAuth)
+        const [password, setPassword] = useState(null)
+
+        async function handleSubmit(e) {
+            e.preventDefault()
+            try {
+                if (!password) throw new Error("Please verify password to make changes")
+                if (password.length < 8)
+                    throw new Error("Password must be at least 8 characters long")
+                if (!name) throw new Error("Name cannot be empty")
+
+                await onSubmit(password, name, twoFactorEnabled)
+            } catch (error) {
+                setAlerts([...alerts, { message: error, color: "danger" }])
+            }
+        }
+
+        return (
+            <div className="card credentials-card" style={{ width: "40rem" }}>
+                <div className="card-header">Account Details</div>
+                <div className="card-body">
+                    {alerts.map((alert, index) => (
+                        <AlertMessage messageText={alert.message} color={alert.color} />
+                    ))}
+                    <form id="updateForm" className="mb-2" onSubmit={handleSubmit}>
+                        <NameInput name={name} setName={setName} />
+                        <div className="mt-3">
+                            <TwoFactorSwitch
+                                twoFactorEnabled={twoFactorEnabled}
+                                setTwoFactorEnabled={setTwoFactorEnabled}
+                            />
+                        </div>
+                        <hr />
+                        <VerifyPassword password={password} setPassword={setPassword} />
+                        <div className="text-muted d-flex justify-content-end">
+                            <Link to="/resetPassword" className="glow-link">
+                                Change Password
+                            </Link>
+                        </div>
+                        <button type="submit" className="btn btn-primary">
+                            Submit Changes
+                        </button>
+                    </form>
+                </div>
+            </div>
+        )
+    }
+</script>
