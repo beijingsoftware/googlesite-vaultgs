@@ -1,0 +1,226 @@
+<!DOCTYPE html>
+<html>
+    <head>
+        <?!= include("Head") ?>
+        <?!= include("Charts") ?>
+        <?!= include("Account") ?>
+        <?!= include("ResetPassword") ?>
+        <?!= include("Generic") ?>
+        <?!= include("Login") ?>
+        <?!= include("SignUp") ?>
+        <?!= include("Home") ?>
+        <?!= include("PrivateRoute") ?>
+        <?!= include("Dashboard") ?>
+        <?!= include("Databases") ?>
+        <?!= include("Tables") ?>
+        <?!= include("Columns") ?>
+        <?!= include("Entries") ?>
+        <?!= include("Query") ?>
+        <?!= include("Api") ?>
+        <?!= include("AppContext") ?>
+        <?!= include("Navigation") ?>
+        <?!= include("App") ?>
+    </head>
+    <body>
+        <div id="root"></div>
+    </body>
+</html>
+
+<script type="text/babel">
+    const { BrowserRouter } = ReactRouterDOM
+    ReactDOM.render(
+        <BrowserRouter>
+            <App />
+        </BrowserRouter>,
+        document.getElementById("root")
+    )
+</script>
+
+<style>
+    .navbar {
+        height: 50px;
+    }
+
+    @media (max-width: 768px) {
+        .navbar {
+            height: auto;
+        }
+    }
+
+    .bg-image-wrapper {
+        position: relative;
+    }
+
+    .bg-image-blur {
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background-size: cover;
+        background-position: center;
+        filter: blur(10px);
+        z-index: -1;
+    }
+
+    .bg-dark-overlay {
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background-color: rgba(0, 0, 0, 0.5);
+        z-index: -1;
+    }
+
+    .content-box {
+        padding: 20px;
+        margin-top: 50px;
+    }
+
+    .btn-glow {
+        background-color: transparent;
+        transition: box-shadow 0.3s ease;
+        box-shadow: 0 0 10px 2px rgba(0, 88, 203, 0.4);
+    }
+
+    .btn-glow:hover {
+        background-color: transparent;
+        box-shadow: 0 0 20px 8px rgba(0, 100, 206, 0.8);
+    }
+
+    .documentation-container {
+        padding: 40px 0;
+    }
+
+    .documentation-content {
+        max-width: 600px;
+        margin: 0 auto;
+    }
+
+    .documentation-title {
+        margin-bottom: 20px;
+    }
+
+    .documentation-text {
+        margin-bottom: 30px;
+    }
+
+    .documentation-button {
+        text-align: center;
+    }
+
+    .glow-link {
+        color: #6cb2eb; /* light blue color */
+        text-decoration: none;
+        cursor: pointer;
+    }
+
+    .glow-link:hover {
+        text-decoration: none;
+        animation: glow 1s infinite alternate; /* Glowing animation */
+    }
+
+    @keyframes glow {
+        from {
+            text-shadow: 0 0 5px #6cb2eb, 0 0 10px #6cb2eb, 0 0 15px #6cb2eb;
+        }
+        to {
+            text-shadow: 0 0 10px #6cb2eb, 0 0 15px #6cb2eb, 0 0 20px #6cb2eb;
+        }
+    }
+
+    /* Add this CSS to your existing CSS file */
+    .feature-card,
+    /* .documentation-container, */
+    .code-container {
+        transition: box-shadow 0.3s ease, transform 0.3s ease; /* Add transform to the transition */
+    }
+
+    .feature-card:hover,
+    /* .documentation-container:hover, */
+    .code-container:hover {
+        box-shadow: 0 0 20px 0 rgba(0, 123, 255, 0.5); /* Blue glow effect */
+        transform: scale(1.05); /* Scale transformation on hover */
+    }
+
+    .documentation-card {
+        position: relative;
+        /* max-width: 800px; */
+        margin: auto;
+        overflow: hidden;
+        border-radius: 10px;
+        transition: box-shadow 0.3s ease, transform 0.3s ease; /* Add transform to the transition */
+    }
+
+    .card-bg-image-blur {
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background-size: cover;
+        background-position: center;
+        filter: blur(10px);
+        z-index: -1;
+        border-radius: 10px;
+    }
+
+    .card-bg-dark-overlay {
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background-color: rgba(0, 0, 0, 0.5);
+        z-index: -1;
+        border-radius: 10px;
+    }
+
+    .documentation-container {
+        position: relative;
+        z-index: 1;
+        padding: 40px 20px;
+        background-color: rgba(255, 255, 255, 0.1);
+    }
+
+    .documentation-card:hover {
+        box-shadow: 0 0 20px 0 rgba(0, 123, 255, 0.5); /* Blue glow effect */
+        transform: scale(1.05); /* Scale transformation on hover */
+    }
+
+    .blurred-image-wrapper {
+        position: relative;
+        width: 100%;
+        height: 100vh; /* Adjust the height as needed */
+    }
+
+    .blurred-image-blur {
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background-size: cover;
+        background-position: center;
+        filter: blur(10px);
+        z-index: -1;
+    }
+
+    .blurred-dark-overlay {
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background-color: rgba(0, 0, 0, 0.6);
+        z-index: -1;
+    }
+
+    /* Adjust login card position */
+    .credentials-card {
+        position: relative;
+        z-index: 1; /* Ensure card appears above the background */
+        margin-top: 50px; /* Adjust the margin as needed */
+    }
+</style>
