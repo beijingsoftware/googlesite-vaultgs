@@ -1,0 +1,810 @@
+<script type="text/babel">
+    const { Modal, Alert, Button, Form, Spinner } = ReactBootstrap
+
+    const Panel = ({ headerText, headerButtons = [], children, className, visible = true }) =>
+        visible ? (
+            <Container fluid className="h-100">
+                <Row className="h-100">
+                    <Col className="d-flex justify-content-center align-items-center">
+                        <Card className={`w-100 h-100 position-relative ${className}`}>
+                            {headerText && (
+                                <Card.Header className="d-flex justify-content-between align-items-center">
+                                    <span>{headerText}</span>
+                                    <div className="header-buttons">
+                                        {headerButtons.map((button, index) => (
+                                            <span key={index} className="ml-2">
+                                                {button}
+                                            </span>
+                                        ))}
+                                    </div>
+                                </Card.Header>
+                            )}
+                            <Card.Body className="d-flex flex-column flex-grow-1">
+                                {children}
+                            </Card.Body>
+                        </Card>
+                    </Col>
+                </Row>
+            </Container>
+        ) : null
+
+    const PanelRow = ({ nestedPanels, maxHeight }) => {
+        const rowStyle = maxHeight ? { maxHeight } : {}
+        const numPanels = nestedPanels.length
+        const colWidth = numPanels > 0 ? Math.floor(12 / numPanels) : 12 // Calculate column width based on the number of panels
+
+        return (
+            <Row className="mb-4" style={rowStyle}>
+                {nestedPanels.map((panel, index) => (
+                    <Col key={index} md={colWidth}>
+                        {panel}
+                    </Col>
+                ))}
+            </Row>
+        )
+    }
+
+    const PanelText = ({ text }) => <Card.Text>{text}</Card.Text>
+
+    const LoadingPanel = ({ loading }) => {
+        if (!loading) return null
+
+        return (
+            <div
+                style={{
+                    position: "absolute",
+                    top: 0,
+                    left: 0,
+                    width: "100%",
+                    height: "100%",
+                    background: "rgba(0, 0, 0, 0.5)",
+                    display: "flex",
+                    justifyContent: "center",
+                    alignItems: "center",
+                    zIndex: 9999,
+                }}
+            >
+                <Spinner animation="border" role="status" style={{ width: "3rem", height: "3rem" }}>
+                    <span className="visually-hidden">Loading...</span>
+                </Spinner>
+            </div>
+        )
+    }
+
+    function LoadingScreen({ loading }) {
+        if (!loading) {
+            return null // If loading is false, don't render anything
+        }
+
+        return (
+            <div
+                style={{
+                    position: "fixed",
+                    top: 0,
+                    left: 0,
+                    width: "100%",
+                    height: "100%",
+                    background: "rgba(0, 0, 0, 0.5)",
+                    display: "flex",
+                    justifyContent: "center",
+                    alignItems: "center",
+                    zIndex: 9999,
+                }}
+            >
+                <div
+                    className="spinner-border text-primary"
+                    role="status"
+                    style={{ width: "3rem", height: "3rem" }}
+                >
+                    <span className="visually-hidden">Loading...</span>
+                </div>
+            </div>
+        )
+    }
+
+    function AlertMessage({ messageText, color, onDismiss }) {
+        return (
+            <Alert variant={color} dismissible onClose={onDismiss}>
+                {messageText.message || messageText}
+            </Alert>
+        )
+    }
+
+    function NameInput({ name, setName }) {
+        return (
+            <Form.Group>
+                <Form.Label>Name</Form.Label>
+                <Form.Control
+                    type="text"
+                    placeholder="Name"
+                    value={name}
+                    onChange={(e) => setName(e.target.value)}
+                />
+            </Form.Group>
+        )
+    }
+
+    function EmailInput({ email, setEmail }) {
+        return (
+            <Form.Group>
+                <Form.Label>Email Address</Form.Label>
+                <Form.Control
+                    type="email"
+                    placeholder="Enter Email"
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
+                />
+            </Form.Group>
+        )
+    }
+
+    function PasswordInput({ password, setPassword }) {
+        return (
+            <Form.Group>
+                <Form.Label>Password</Form.Label>
+                <Form.Control
+                    type="password"
+                    placeholder="Password"
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                />
+            </Form.Group>
+        )
+    }
+
+    function VerifyPassword({ password, setPassword }) {
+        return (
+            <Form.Group>
+                <Form.Label>Verify Password</Form.Label>
+                <Form.Control
+                    type="password"
+                    placeholder="Password"
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                />
+            </Form.Group>
+        )
+    }
+
+    function NewPasswordInput({ newPassword, setNewPassword }) {
+        return (
+            <Form.Group>
+                <Form.Label>New Password</Form.Label>
+                <Form.Control
+                    type="password"
+                    placeholder="Password"
+                    value={newPassword}
+                    onChange={(e) => setNewPassword(e.target.value)}
+                />
+            </Form.Group>
+        )
+    }
+
+    function CodeInput({ code, setCode }) {
+        return (
+            <Form.Group>
+                <Form.Label>Enter Code</Form.Label>
+                <Form.Control type="text" value={code} onChange={(e) => setCode(e.target.value)} />
+            </Form.Group>
+        )
+    }
+
+    function KeyInput({ inputKey, setInputKey }) {
+        return (
+            <Form.Group>
+                <Form.Label>Enter Key</Form.Label>
+                <Form.Control
+                    type="text"
+                    value={inputKey}
+                    onChange={(e) => setInputKey(e.target.value)}
+                />
+            </Form.Group>
+        )
+    }
+
+    const Dropdown = ({ options, selectedOption, setSelectedOption, defaultText }) => {
+        const handleSelect = (option) => {
+            setSelectedOption(option)
+        }
+
+        return (
+            <div className="dropdown">
+                <button
+                    className="btn btn-secondary dropdown-toggle"
+                    type="button"
+                    id="dropdownMenuButton"
+                    data-bs-toggle="dropdown"
+                    aria-expanded="false"
+                >
+                    {selectedOption ? selectedOption : defaultText}
+                </button>
+                <ul
+                    className="dropdown-menu"
+                    style={{ maxHeight: "200px", overflowY: "auto" }}
+                    aria-labelledby="dropdownMenuButton"
+                >
+                    {options ? (
+                        options.map((option, index) => (
+                            <li key={index}>
+                                <button
+                                    className="dropdown-item"
+                                    type="button"
+                                    onClick={() => handleSelect(option)}
+                                >
+                                    {option}
+                                </button>
+                            </li>
+                        ))
+                    ) : (
+                        <div style={{ justifyContent: "center", display: "flex" }}>
+                            <Spinner />
+                        </div>
+                    )}
+                </ul>
+            </div>
+        )
+    }
+
+    function TwoFactorSwitch({ twoFactorEnabled, setTwoFactorEnabled }) {
+        const handleSwitchChange = () => {
+            setTwoFactorEnabled((prev) => !prev)
+        }
+
+        return (
+            <Form>
+                <Form.Group>
+                    <Form.Check
+                        type="switch"
+                        id="two-factor-auth-switch"
+                        label="Two Factor Authentication"
+                        checked={twoFactorEnabled}
+                        onChange={handleSwitchChange}
+                    />
+                </Form.Group>
+            </Form>
+        )
+    }
+
+    function AboutModal({ showModal, setShowModal }) {
+        const bodyContent = (
+            <div>
+                <h1>About</h1>
+                <p>
+                    Welcome to Vault.gs, a project providing seamless and powerful data management
+                    through Google Apps Script. Our tool is designed to enable Create, Read, Update,
+                    and Delete (CRUD) operations for managing data in Google Sheets via HTTP
+                    requests, offering an efficient and user-friendly solution for data storage and
+                    manipulation.
+                </p>
+                <h2>Key Features</h2>
+                <ul>
+                    <li>
+                        <strong>CRUD Operations:</strong> Perform Create, Read, Update, and Delete
+                        operations on Google Sheets effortlessly.
+                    </li>
+                    <li>
+                        <strong>HTTP API:</strong> Access our functionality via HTTP requests,
+                        making integration with various applications straightforward.
+                    </li>
+                    <li>
+                        <strong>Secure Data Storage:</strong> Utilize Google's advanced security
+                        measures to ensure your data remains protected.
+                    </li>
+                    <li>
+                        <strong>No Hosting Costs:</strong> Store your data on Google Drive for free,
+                        removing the need for server hosting expenses.
+                    </li>
+                    <li>
+                        <strong>Easy Setup:</strong> Deploy Vault.gs as a web app in Google Apps
+                        Script with just a few clicks.
+                    </li>
+                </ul>
+                <h2>How It Works</h2>
+                <p>
+                    Using Vault.gs is simple. Deploy the project as a web app in Google Apps Script
+                    and send HTTP POST requests to the provided URL. Specify the desired action and
+                    parameters in the request body to perform operations on your Google Sheets data.
+                </p>
+                <h2>Contact Us</h2>
+                <p>
+                    If you have any questions, suggestions, or feedback, you can find contact
+                    information on the contact section of the footer.
+                </p>
+            </div>
+        )
+
+        return (
+            <CustomModal
+                showModal={showModal}
+                setShowModal={setShowModal}
+                title="About Us"
+                bodyContent={bodyContent}
+            />
+        )
+    }
+
+    function ContactModal({ showModal, setShowModal }) {
+        const bodyContent = (
+            <div>
+                <h1>Contact Us</h1>
+                <p>For inquiries, please contact coltonbreynolds@gmail.com</p>
+            </div>
+        )
+
+        return (
+            <CustomModal
+                showModal={showModal}
+                setShowModal={setShowModal}
+                title="Contact Us"
+                bodyContent={bodyContent}
+            />
+        )
+    }
+
+    function PrivacyPolicyModal({ showModal, setShowModal }) {
+        const bodyContent = (
+            <div>
+                <h1>Privacy Policy</h1>
+                <p>Last updated: May 19, 2024</p>
+                <p>
+                    At Vault.gs, we are committed to protecting your privacy. This Privacy Policy
+                    explains how we collect, use, disclose, and safeguard your information when you
+                    use our service. Please read this privacy policy carefully. If you do not agree
+                    with the terms of this privacy policy, please do not access the service.
+                </p>
+
+                <h2>Information We Collect</h2>
+                <p>
+                    We may collect information about you in a variety of ways. The information we
+                    may collect via the service includes:
+                </p>
+
+                <h3>Personal Data</h3>
+                <p>
+                    Personally identifiable information, such as your name, email address, and other
+                    details that you voluntarily give to us when you register with the service or
+                    when you choose to participate in various activities related to the service.
+                </p>
+
+                <h3>Derivative Data</h3>
+                <p>
+                    Information our servers automatically collect when you access the service, such
+                    as your IP address, your browser type, your operating system, your access times,
+                    and the pages you have viewed directly before and after accessing the service.
+                </p>
+
+                <h2>Use of Your Information</h2>
+                <p>
+                    Having accurate information about you permits us to provide you with a smooth,
+                    efficient, and customized experience. Specifically, we may use information
+                    collected about you via the service to:
+                </p>
+                <ul>
+                    <li>Provide, operate, and maintain our service</li>
+                    <li>Improve, personalize, and expand our service</li>
+                    <li>Understand and analyze how you use our service</li>
+                    <li>Develop new products, services, features, and functionality</li>
+                    <li>
+                        Communicate with you, either directly or through one of our partners,
+                        including for customer service, to provide you with updates and other
+                        information relating to the service, and for marketing and promotional
+                        purposes
+                    </li>
+                    <li>Process your transactions and send you related information</li>
+                    <li>Find and prevent fraud</li>
+                </ul>
+
+                <h2>Disclosure of Your Information</h2>
+                <p>
+                    We may share information we have collected about you in certain situations. Your
+                    information may be disclosed as follows:
+                </p>
+
+                <h3>By Law or to Protect Rights</h3>
+                <p>
+                    If we believe the release of information about you is necessary to respond to
+                    legal process, to investigate or remedy potential violations of our policies, or
+                    to protect the rights, property, and safety of others, we may share your
+                    information as permitted or required by any applicable law, rule, or regulation.
+                </p>
+
+                <h3>Third-Party Service Providers</h3>
+                <p>
+                    We may share your information with third parties that perform services for us or
+                    on our behalf, including payment processing, data analysis, email delivery,
+                    hosting services, customer service, and marketing assistance.
+                </p>
+
+                <h2>Security of Your Information</h2>
+                <p>
+                    We use administrative, technical, and physical security measures to help protect
+                    your personal information. While we have taken reasonable steps to secure the
+                    personal information you provide to us, please be aware that despite our
+                    efforts, no security measures are perfect or impenetrable, and no method of data
+                    transmission can be guaranteed against any interception or other type of misuse.
+                </p>
+
+                <h2>Policy for Children</h2>
+                <p>
+                    We do not knowingly solicit information from or market to children under the age
+                    of 13. If we learn that we have collected personal information from a child
+                    under age 13 without verification of parental consent, we will delete that
+                    information as quickly as possible. If you believe we might have any information
+                    from or about a child under 13, please contact us.
+                </p>
+
+                <h2>Changes to This Privacy Policy</h2>
+                <p>
+                    We may update this Privacy Policy from time to time in order to reflect, for
+                    example, changes to our practices or for other operational, legal, or regulatory
+                    reasons. We will notify you of any changes by posting the new Privacy Policy on
+                    this page. You are advised to review this Privacy Policy periodically for any
+                    changes. Changes to this Privacy Policy are effective when they are posted on
+                    this page.
+                </p>
+
+                <h2>Contact Us</h2>
+                <p>
+                    If you have questions or comments about this Privacy Policy, you can find
+                    contact information on the contact section.
+                </p>
+            </div>
+        )
+
+        return (
+            <CustomModal
+                showModal={showModal}
+                setShowModal={setShowModal}
+                title="Privacy Policy"
+                bodyContent={bodyContent}
+            />
+        )
+    }
+
+    function TermsOfServiceModal({ showModal, setShowModal }) {
+        const bodyContent = (
+            <div>
+                <h1>Terms and Conditions</h1>
+                <p>
+                    Welcome to our website. If you continue to browse and use this website, you are
+                    agreeing to comply with and be bound by the following terms and conditions of
+                    use, which together with our privacy policy govern Beijing Software's
+                    relationship with you in relation to this website. If you disagree with any part
+                    of these terms and conditions, please do not use our website.
+                </p>
+
+                <h2>1. General</h2>
+                <p>
+                    The content of the pages of this website is for your general information and use
+                    only. It is subject to change without notice.
+                </p>
+                <p>
+                    Neither we nor any third parties provide any warranty or guarantee as to the
+                    accuracy, timeliness, performance, completeness, or suitability of the
+                    information and materials found or offered on this website for any particular
+                    purpose. You acknowledge that such information and materials may contain
+                    inaccuracies or errors, and we expressly exclude liability for any such
+                    inaccuracies or errors to the fullest extent permitted by law.
+                </p>
+                <p>
+                    Your use of any information or materials on this website is entirely at your own
+                    risk, for which we shall not be liable. It shall be your own responsibility to
+                    ensure that any products, services, or information available through this
+                    website meet your specific requirements.
+                </p>
+                <p>
+                    This website contains material which is owned by or licensed to us. This
+                    material includes, but is not limited to, the design, layout, look, appearance,
+                    and graphics. Reproduction is prohibited other than in accordance with the
+                    copyright notice, which forms part of these terms and conditions.
+                </p>
+                <p>
+                    All trademarks reproduced in this website, which are not the property of, or
+                    licensed to the operator, are acknowledged on the website.
+                </p>
+                <p>
+                    Unauthorized use of this website may give rise to a claim for damages and/or be
+                    a criminal offense.
+                </p>
+                <p>
+                    From time to time, this website may also include links to other websites. These
+                    links are provided for your convenience to provide further information. They do
+                    not signify that we endorse the website(s). We have no responsibility for the
+                    content of the linked website(s).
+                </p>
+
+                <h2>2. Disclaimer</h2>
+                <p>
+                    The information contained in this website is for general information purposes
+                    only. The information is provided by us and while we endeavour to keep the
+                    information up to date and correct, we make no representations or warranties of
+                    any kind, express or implied, about the completeness, accuracy, reliability,
+                    suitability or availability with respect to the website or the information,
+                    products, services, or related graphics contained on the website for any
+                    purpose. Any reliance you place on such information is therefore strictly at
+                    your own risk.
+                </p>
+                <p>
+                    In no event will we be liable for any loss or damage including without
+                    limitation, indirect or consequential loss or damage, or any loss or damage
+                    whatsoever arising from loss of data or profits arising out of, or in connection
+                    with, the use of this website.
+                </p>
+                <p>
+                    Every effort is made to keep the website up and running smoothly. However, [Your
+                    Company Name] takes no responsibility for, and will not be liable for, the
+                    website being temporarily unavailable due to technical issues beyond our
+                    control.
+                </p>
+
+                <h2>3. Modifications to the Service and Prices</h2>
+                <p>Prices for our products are subject to change without notice.</p>
+                <p>
+                    We reserve the right at any time to modify or discontinue the Service (or any
+                    part or content thereof) without notice at any time.
+                </p>
+                <p>
+                    We shall not be liable to you or to any third-party for any modification, price
+                    change, suspension, or discontinuance of the Service.
+                </p>
+
+                <h2>4. Intellectual Property</h2>
+                <p>
+                    This website contains material which is owned by or licensed to us. This
+                    material includes, but is not limited to, the design, layout, look, appearance,
+                    and graphics.
+                </p>
+                <p>
+                    All trademarks reproduced in this website, which are not the property of, or
+                    licensed to the operator, are acknowledged on the website.
+                </p>
+                <p>
+                    Unauthorized use of this website may give rise to a claim for damages and/or be
+                    a criminal offense.
+                </p>
+
+                <h2>5. Governing Law</h2>
+                <p>
+                    Your use of this website and any dispute arising out of such use of the website
+                    is subject to the laws of United States of America.
+                </p>
+
+                <h2>6. Contact Us</h2>
+                <p>
+                    If you have any questions about these Terms and Conditions, you can find contact
+                    information on the contact section.
+                </p>
+            </div>
+        )
+
+        return (
+            <CustomModal
+                showModal={showModal}
+                setShowModal={setShowModal}
+                title="Terms of Service"
+                bodyContent={bodyContent}
+            />
+        )
+    }
+
+    function TermsCheckBox({ accepted, setAccepted }) {
+        const [showModal, setShowModal] = useState(false)
+
+        return (
+            <>
+                <TermsOfServiceModal showModal={showModal} setShowModal={setShowModal} />
+                <Form.Group>
+                    <div className="d-flex align-items-center">
+                        <Form.Check
+                            type="checkbox"
+                            label="I agree to the"
+                            checked={accepted}
+                            onChange={(e) => setAccepted(e.target.checked)}
+                        />
+                        <a className="glow-link ms-2" onClick={() => setShowModal(true)}>
+                            Terms and Conditions
+                        </a>
+                    </div>
+                </Form.Group>
+            </>
+        )
+    }
+
+    function EmailCodeModal({ onSubmit, showModal, setShowModal }) {
+        const [code, setCode] = useState("")
+        const [alerts, setAlerts] = useState([
+            {
+                message: `A verification code has been sent to your email. Please enter the code below to proceed.`,
+                color: "success",
+            },
+        ])
+
+        const handleClose = () => {
+            setShowModal(false)
+            setCode("")
+            // setAlerts([])
+        }
+
+        async function handleSubmit(e) {
+            e.preventDefault()
+            try {
+                if (!code) throw new Error("Please enter a code")
+                await onSubmit(code)
+            } catch (error) {
+                setAlerts([...alerts, { message: error.message, color: "danger" }])
+            }
+        }
+
+        return (
+            <Modal show={showModal} onHide={handleClose}>
+                <Modal.Header closeButton>
+                    <Modal.Title>Email Verification</Modal.Title>
+                </Modal.Header>
+                <Modal.Body>
+                    {alerts.map((alert, index) => (
+                        <AlertMessage key={index} messageText={alert.message} color={alert.color} />
+                    ))}
+                    <Form onSubmit={handleSubmit}>
+                        <CodeInput code={code} setCode={setCode} />
+                        <div className="mt-3">
+                            <Button variant="primary" type="submit">
+                                Verify
+                            </Button>
+                        </div>
+                    </Form>
+                </Modal.Body>
+            </Modal>
+        )
+    }
+
+    function CustomModal({ showModal, setShowModal, title, bodyContent, actions, size = "lg" }) {
+        const handleClose = () => {
+            setShowModal(false)
+        }
+
+        return (
+            <Modal show={showModal} onHide={handleClose} size={size}>
+                <Modal.Header closeButton>
+                    <Modal.Title>{title}</Modal.Title>
+                </Modal.Header>
+                <Modal.Body>{bodyContent}</Modal.Body>
+                <Modal.Footer>{actions}</Modal.Footer>
+            </Modal>
+        )
+    }
+
+    function UpdatedModal({ showModal, setShowModal }) {
+        const bodyContent = <p>Your Account has been successfully updated.</p>
+
+        const actions = <Button onClick={() => setShowModal(false)}>Continue</Button>
+
+        return (
+            <CustomModal
+                showModal={showModal}
+                setShowModal={setShowModal}
+                title="Updated Account Details"
+                bodyContent={bodyContent}
+                actions={actions}
+            />
+        )
+    }
+
+    function LoggedInModal({ showModal, setShowModal }) {
+        const bodyContent = <p>You are logged in. Click the button below to continue.</p>
+
+        const actions = (
+            <Link to="/" className="btn btn-primary">
+                Continue
+            </Link>
+        )
+
+        return (
+            <CustomModal
+                showModal={showModal}
+                setShowModal={setShowModal}
+                title="You Are Logged In"
+                bodyContent={bodyContent}
+                actions={actions}
+            />
+        )
+    }
+
+    function LoginModal({ showModal, setShowModal }) {
+        const bodyContent = (
+            <p>Your account has been created successfully. You can now go to the login page.</p>
+        )
+
+        const actions = (
+            <Link to="/login" className="btn btn-primary">
+                Go to Login
+            </Link>
+        )
+
+        return (
+            <CustomModal
+                showModal={showModal}
+                setShowModal={setShowModal}
+                title="Account Created"
+                bodyContent={bodyContent}
+                actions={actions}
+            />
+        )
+    }
+
+    function PasswordResetModal({ showModal, setShowModal }) {
+        const bodyContent = <p>Your password has been reset successfully. You can now login.</p>
+
+        const actions = (
+            <Link to="/login" className="btn btn-primary">
+                Go to Login
+            </Link>
+        )
+
+        return (
+            <CustomModal
+                showModal={showModal}
+                setShowModal={setShowModal}
+                title="Password Reset"
+                bodyContent={bodyContent}
+                actions={actions}
+            />
+        )
+    }
+
+    const BlurredBackground = ({ imageSrc, children }) => (
+        <div className="blurred-image-wrapper">
+            <div
+                className="blurred-image-blur"
+                style={{ backgroundImage: `url(${imageSrc})` }}
+            ></div>
+            <div className="blurred-dark-overlay"></div>
+            {children}
+        </div>
+    )
+
+    const DataTable = ({ data, onRowClick }) => {
+        const mappedRows = data?.slice(1).map((row, rowIndex) => (
+            <tr key={rowIndex} onClick={() => onRowClick(row)} style={{ cursor: "pointer" }}>
+                <td>{rowIndex + 1}</td>
+                {row.map((cell, cellIndex) => (
+                    <td key={cellIndex} style={{ whiteSpace: "pre-wrap" }}>
+                        {typeof cell === "boolean"
+                            ? cell.toString()
+                            : typeof cell === "object" && cell !== null
+                            ? JSON.stringify(cell, null, 2)
+                            : cell}
+                    </td>
+                ))}
+            </tr>
+        ))
+
+        if (!data || data.length === 0) {
+            return null
+        }
+
+        const headers = data[0]
+
+        return (
+            <Table striped bordered hover variant="dark">
+                <thead>
+                    <tr>
+                        <th>#</th>
+                        {headers.map((header, index) => (
+                            <th key={index}>{header}</th>
+                        ))}
+                    </tr>
+                </thead>
+                <tbody>{mappedRows}</tbody>
+            </Table>
+        )
+    }
+</script>
+<style>
+    .header-buttons span {
+        margin-left: 8px; /* Adjust the value as needed */
+    }
+
+    .header-buttons span:first-child {
+        margin-left: 0;
+    }
+</style>
