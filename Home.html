@@ -1,0 +1,265 @@
+<script type="text/babel">
+    const { useState, useEffect, useContext, useRef } = React
+    const { Button, Container, Row, Col } = ReactBootstrap
+    const { Link, NavLink } = ReactRouterDOM
+    const { AppContext } = window
+
+    const Hero = ({ src, logo, title, description, buttonText, buttonLink }) => (
+        <div className="container-fluid bg-image-wrapper position-relative">
+            <div className="bg-image-blur" style={{ backgroundImage: `url(${src})` }}></div>
+            <div className="bg-dark-overlay"></div>
+            <Container>
+                <Row className="justify-content-center">
+                    <Col lg={6} md={8}>
+                        <div className="content-box p-4 mt-5 text-center text-white">
+                            <img src={logo} height="70" alt="Logo" />
+                            <p className="lead">{title}</p>
+                            <hr className="my-4" />
+                            <p>{description}</p>
+                            <Button
+                                as={Link}
+                                to={buttonLink}
+                                className="btn-lg btn-glow btn-primary"
+                            >
+                                {buttonText}
+                            </Button>
+                        </div>
+                    </Col>
+                </Row>
+            </Container>
+        </div>
+    )
+
+    const Features = ({ features }) => (
+        <Container className="my-5">
+            <h2 className="text-center mb-4">API Features</h2>
+            <Row>
+                {features.map(({ id, icon, title, description }) => (
+                    <Col lg={4} key={id} className="mb-4">
+                        <div className="card h-100 feature-card" id={id}>
+                            <div className="card-body">
+                                <i className={`fas ${icon} fa-3x mb-3 feature-icon`}></i>
+                                <h4 className="card-title feature-title">{title}</h4>
+                                <p className="card-text">{description}</p>
+                            </div>
+                        </div>
+                    </Col>
+                ))}
+            </Row>
+        </Container>
+    )
+
+    const Documentation = ({ title, text, link, linkText }) => (
+        <Container className="my-5">
+            <div className="documentation-container bg-dark py-4 rounded">
+                <Row className="justify-content-center">
+                    <Col lg={8}>
+                        <div className="documentation-content text-center">
+                            <h2 className="documentation-title text-white mb-4">{title}</h2>
+                            <p className="documentation-text text-white mb-4">{text}</p>
+                            <Button className="btn-primary" href={link} role="button">
+                                {linkText}
+                            </Button>
+                        </div>
+                    </Col>
+                </Row>
+            </div>
+        </Container>
+    )
+
+    const DocumentationCard = ({ title, text, link, linkText }) => (
+        <Container className="my-5">
+            <div className="documentation-card position-relative">
+                <div
+                    className="card-bg-image-blur"
+                    style={{ backgroundImage: `url(${SRC.hero})` }}
+                ></div>
+                <div className="card-bg-dark-overlay"></div>
+                <div className="documentation-container text-center text-white py-4 rounded">
+                    <h2 className="documentation-title mb-4">{title}</h2>
+                    <p className="documentation-text mb-4">{text}</p>
+                    <Button className="btn-glow btn-primary" href={link} role="button">
+                        {linkText}
+                    </Button>
+                </div>
+            </div>
+        </Container>
+    )
+
+    const TextCode = ({ title, description, code }) => (
+        <Container className="my-5">
+            <div className="code-container bg-dark py-4 rounded">
+                <Row className="justify-content-center text-code-row">
+                    <Col lg={6}>
+                        <div className="text-container">
+                            <h2>{title}</h2>
+                            <p className="pl-md-4">{description}</p>
+                        </div>
+                    </Col>
+                    <Col lg={6}>
+                        <div className="code-block-container">
+                            <CodeBlock code={code} language="json" backgroundColor="#1f2329" />
+                        </div>
+                    </Col>
+                </Row>
+            </div>
+        </Container>
+    )
+
+    const CodeBlock = ({ code, language, backgroundColor }) => {
+        const codeRef = useRef(null)
+
+        useEffect(() => {
+            if (window.hljs) {
+                window.hljs.highlightElement(codeRef.current)
+            }
+        }, [code, language])
+
+        return (
+            <pre style={{ backgroundColor: backgroundColor }}>
+                <code ref={codeRef} className={language} style={{ fontSize: 20 }}>
+                    {code}
+                </code>
+            </pre>
+        )
+    }
+
+    function Footer() {
+        const [showAboutModal, setShowAboutModal] = useState(false)
+        const [showTermsModal, setShowTermsModal] = useState(false)
+        const [showPrivacyModal, setShowPrivacyModal] = useState(false)
+        const [showContactModal, setShowContactModal] = useState(false)
+
+        return (
+            <footer className="footer bg-dark py-5 mt-auto">
+                <Container className="text-center text-white">
+                    <p>&copy; 2024 Beijing Software. All rights reserved.</p>
+                    <ul className="list-inline mb-0">
+                        <li className="list-inline-item">
+                            <a className="glow-link" onClick={() => setShowAboutModal(true)}>
+                                About
+                            </a>
+                        </li>
+                        <li className="list-inline-item">|</li>
+                        <li className="list-inline-item">
+                            <a className="glow-link" onClick={() => setShowTermsModal(true)}>
+                                Terms of Service
+                            </a>
+                        </li>
+                        <li className="list-inline-item">|</li>
+                        <li className="list-inline-item">
+                            <a className="glow-link" onClick={() => setShowPrivacyModal(true)}>
+                                Privacy Policy
+                            </a>
+                        </li>
+                        <li className="list-inline-item">|</li>
+                        <li className="list-inline-item">
+                            <a className="glow-link" onClick={() => setShowContactModal(true)}>
+                                Contact
+                            </a>
+                        </li>
+                    </ul>
+                </Container>
+                <AboutModal showModal={showAboutModal} setShowModal={setShowAboutModal} />
+                <TermsOfServiceModal showModal={showTermsModal} setShowModal={setShowTermsModal} />
+                <PrivacyPolicyModal
+                    showModal={showPrivacyModal}
+                    setShowModal={setShowPrivacyModal}
+                />
+                <ContactModal showModal={showContactModal} setShowModal={setShowContactModal} />
+            </footer>
+        )
+    }
+
+    const Home = () => {
+        const heroData = {
+            src: SRC.hero,
+            logo: SRC.logo,
+            title: "Vault.gs is an advanced REST API designed specifically for Google Sheets, providing users a comprehensive suite of CRUD (Create, Read, Update, Delete) operations and dynamic data handling capabilities.",
+            description:
+                "Experience the simplicity and convenience of managing your data within the familiar environment of Google Sheets.",
+            buttonText: "Get Started",
+            buttonLink: "/dash",
+        }
+
+        const featuresData = [
+            {
+                id: "feature1",
+                icon: "fa-cogs",
+                title: "Dynamic Data Types",
+                description:
+                    "Supports a range of data types including Integer, Float, Boolean, and String. This flexibility enables you to handle diverse data structures and formats seamlessly. Built-in data validation ensures data integrity and reliability.",
+            },
+            {
+                id: "feature2",
+                icon: "fa-filter",
+                title: "Advanced Filtering and Pagination",
+                description:
+                    "Utilize powerful filtering options and pagination support for efficient data retrieval. Customize your queries to retrieve specific data subsets based on conditional parameters, allowing effective management of large datasets.",
+            },
+            {
+                id: "feature3",
+                icon: "fa-table",
+                title: "Effortless Integration with Sheets",
+                description:
+                    "Integrate seamlessly with Google Sheets without the need for complex setup or configuration. Enjoy hassle-free data management within the familiar interface of Google Sheets.",
+            },
+        ]
+
+        const documentationData = {
+            title: "Simple to Use",
+            text: "For detailed documentation and usage instructions, please refer to our official documentation.",
+            link: "https://github.com/beijingsoftware/vault.gs/wiki",
+            linkText: "Read the Docs",
+        }
+
+        const textCodeData = {
+            title: "Intuitive Syntax",
+            description:
+                "Discover the intuitive syntax of Vault.gs. Seamlessly manage your Google Sheets data with a JSON API. From simple CRUD operations to complex filtering, Vault.gs provides you with straightforward HTTP requests and a comprehensive user guide. Effortlessly create, read, update, and delete tables, columns, and entries with just a few lines of code.",
+            code: `POST /your-script-url\nContent-Type: application/json\n{\n "key": "your-spreadsheet-id",\n "action": "create",\n "type": "table",\n "table": "Users"\n}`,
+        }
+
+        const footerLinks = [
+            { text: "About", href: "#" },
+            { text: "Terms of Service", href: "#" },
+            { text: "Privacy Policy", href: "#" },
+            { text: "Contact", href: "#" },
+        ]
+
+        return (
+            <div className="d-flex flex-column min-vh-100">
+                <Hero {...heroData} />
+                <Features features={featuresData} />
+                <TextCode {...textCodeData} />
+                <DocumentationCard {...documentationData} />
+                <Footer />
+            </div>
+        )
+    }
+</script>
+
+<style>
+    /* Default margin styles for both desktop and mobile */
+    .text-container,
+    .code-block-container {
+        margin-left: 150px;
+    }
+
+    .code-block-container {
+        margin-right: 100px;
+    }
+
+    @media only screen and (max-width: 1000px) {
+        /* Remove margin and centering on mobile */
+        .text-container,
+        .code-block-container {
+            margin-left: 0 !important;
+            margin-right: 0 !important;
+        }
+
+        .text-code-row {
+            justify-content: flex-start;
+        }
+    }
+</style>
