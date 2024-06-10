@@ -1,0 +1,21 @@
+<script type="text/babel">
+    const { useContext } = React
+    const { Route, Redirect } = ReactRouterDOM
+
+    function PrivateRoute({ component: Component, ...rest }) {
+        const { sessionData } = useContext(AppContext)
+
+        return (
+            <Route
+                {...rest}
+                render={(props) =>
+                    sessionData && sessionData.user ? (
+                        <Component {...props} />
+                    ) : (
+                        <Redirect to="login" />
+                    )
+                }
+            />
+        )
+    }
+</script>
