@@ -1,0 +1,126 @@
+<script type="text/babel">
+    const { useState, useContext } = React
+    const { Redirect } = ReactRouterDOM
+
+    function SignUp() {
+        const { sessionData, updateSessionData } = useContext(AppContext)
+        const [showModal, setShowModal] = useState(false)
+        const [loading, setLoading] = useState(false)
+        const [showLoginModal, setShowLoginModal] = useState(false)
+        const [tempUser, setTempUser] = useState(null)
+        const [user, setUser] = useState(null)
+
+        async function handleSignupSubmit(name, email, password) {
+            try {
+                setLoading(true)
+                const existingUser = await Utilities.runScript("isValidUser", [email])
+                if (existingUser) throw new Error("User already exists with email")
+
+                setLoading(false)
+                setShowModal(true)
+                setTempUser({ name: name, email: email, password: password })
+                await Utilities.runScript("emailVerificationCode", [email])
+            } catch (error) {
+                setLoading(false)
+                throw error
+            }
+        }
+
+        async function handleEmailCodeSubmit(code) {
+            try {
+                setLoading(true)
+                const result = await Utilities.runScript("validateEmailCode", [
+                    tempUser.email,
+                    code,
+                ])
+
+                if (result) {
+                    setShowModal(false)
+                    await Utilities.runScript("createUser", [
+                        tempUser.email,
+                        tempUser.password,
+                        tempUser.name,
+                    ])
+
+                    setLoading(false)
+                    setShowLoginModal(true)
+                } else {
+                    throw new Error("Incorrect Verification Code")
+                }
+            } catch (error) {
+                setLoading(false)
+                throw error
+            }
+        }
+
+        return (
+            <BlurredBackground imageSrc={SRC.hero}>
+                <div className="d-flex justify-content-center pt-5">
+                    <LoadingScreen loading={loading} />
+                    <EmailCodeModal
+                        onSubmit={handleEmailCodeSubmit}
+                        showModal={showModal}
+                        setShowModal={setShowModal}
+                    />
+                    <SignUpCard onSubmit={handleSignupSubmit} />
+                    {showLoginModal && (
+                        <LoginModal showModal={showLoginModal} setShowModal={setShowLoginModal} />
+                    )}
+                </div>
+            </BlurredBackground>
+        )
+    }
+
+    function SignUpCard({ onSubmit }) {
+        const [alerts, setAlerts] = useState([])
+        const [name, setName] = useState(null)
+        const [email, setEmail] = useState(null)
+        const [password, setPassword] = useState(null)
+        const [accepted, setAccepted] = useState(null)
+
+        async function handleSubmit(e) {
+            e.preventDefault()
+            try {
+                if (!name) throw new Error("Please enter a name")
+                if (!email || !password) throw new Error("Please enter both an email and password")
+                if (password.length < 8)
+                    throw new Error("Password must be at least 8 characters long")
+                if (!accepted) throw new Error("Please accept terms to create an account")
+
+                await onSubmit(name, email, password)
+            } catch (error) {
+                setAlerts([...alerts, { message: error, color: "danger" }])
+            }
+        }
+
+        const removeAlert = (index) => {
+            setAlerts((prevAlerts) => prevAlerts.filter((_, idx) => idx !== index))
+        }
+
+        return (
+            <div className="card credentials-card" style={{ width: "40rem" }}>
+                <div className="card-header">Sign Up</div>
+                <div className="card-body">
+                    {alerts.map((alert, index) => (
+                        <AlertMessage
+                            messageText={alert.message}
+                            color={alert.color}
+                            onDismiss={() => removeAlert(index)}
+                        />
+                    ))}
+                    <form id="loginForm" className="mb-2" onSubmit={handleSubmit}>
+                        <NameInput name={name} setName={setName} />
+                        <EmailInput email={email} setEmail={setEmail} />
+                        <PasswordInput password={password} setPassword={setPassword} />
+                        <TermsCheckBox accepted={accepted} setAccepted={setAccepted} />
+                        <div className="mt-3">
+                            <button type="submit" className="btn btn-primary">
+                                Submit
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        )
+    }
+</script>
