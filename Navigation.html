@@ -1,0 +1,344 @@
+<script type="text/babel">
+    const { useState, useEffect, useContext } = React
+    const { Navbar, Nav, NavDropdown, Button, Col } = ReactBootstrap
+    const { Link, NavLink, withRouter } = ReactRouterDOM
+    const { AppContext } = window
+
+    const NavbarBrand = ({ to, src, height }) => {
+        return (
+            <Link className="navbar-brand" to={to}>
+                <img src={src} height={height} alt="Logo" />
+            </Link>
+        )
+    }
+
+    const NavbarToggle = ({ target }) => {
+        return <Navbar.Toggle />
+    }
+
+    const NavbarCollapse = ({ children, id }) => {
+        return <Navbar.Collapse id={id}>{children}</Navbar.Collapse>
+    }
+
+    const NavItem = ({ children }) => {
+        return <Nav.Item>{children}</Nav.Item>
+    }
+
+    const NavLinkItem = ({ to, children }) => {
+        return (
+            <Nav.Link as={NavLink} to={to}>
+                {children}
+            </Nav.Link>
+        )
+    }
+
+    const NavButton = ({ to, children, className = "btn btn-sm btn-primary" }) => {
+        return (
+            <Button as={Link} to={to} className={className}>
+                {children}
+            </Button>
+        )
+    }
+
+    const ExternalLink = ({ href, children }) => {
+        return (
+            <Nav.Link
+                href={href}
+                target="_blank"
+                onClick={(e) => {
+                    e.preventDefault()
+                    window.open(href, "_blank")
+                }}
+            >
+                {children}
+            </Nav.Link>
+        )
+    }
+
+    const AccountButtons = ({ loggedIn }) => {
+        const { sessionData, updateSessionData } = useContext(AppContext)
+        async function onLogout() {
+            await Utilities.runScript("logout")
+            updateSessionData()
+        }
+
+        return loggedIn ? (
+            <NavDropdown title={sessionData.user.name} id="basic-nav-dropdown">
+                <NavDropdown.Item as={Link} to="/account">
+                    Account
+                </NavDropdown.Item>
+                <NavDropdown.Item onClick={onLogout}>Logout</NavDropdown.Item>
+            </NavDropdown>
+        ) : (
+            <>
+                <Nav.Link as={Link} to="/login">
+                    Login
+                </Nav.Link>
+                <Nav.Link as={Link} to="/signup">
+                    Sign Up
+                </Nav.Link>
+            </>
+        )
+    }
+
+    function CustomNavbar({ children }) {
+        const { sessionData } = useContext(AppContext)
+        const [loading, setLoading] = useState(true)
+
+        useEffect(() => {
+            if (sessionData !== null) {
+                setLoading(false)
+            }
+        }, [sessionData])
+
+        const loggedIn = sessionData && sessionData.user
+
+        const sidebarPages = ["/dash", "/databases", "/tables", "/query", "/entries", "/api"]
+
+        if (loading) {
+            return <LoadingScreen loading={loading} />
+        }
+
+        if (
+            location.pathname === "/dash" ||
+            location.pathname === "/databases" ||
+            location.pathname === "/tables" ||
+            location.pathname === "/columns" ||
+            location.pathname === "/entries" ||
+            location.pathname === "/query" ||
+            location.pathname === "/api"
+        ) {
+            return (
+                <>
+                    <div className="dashboardContainerDiv">
+                        <div className="sidebarDiv">
+                            <Sidebar />
+                        </div>
+                        <div className="contentDiv">{children}</div>
+                    </div>
+                </>
+            )
+        }
+
+        return (
+            <>
+                <Navbar expand="sm" bg="dark" variant="dark">
+                    <div className="container">
+                        <NavbarBrand to="/" src={SRC.logo} height="35" />
+                        <NavbarToggle target="navbarContent" />
+                        <NavbarCollapse id="navbarContent">
+                            <Nav className="me-auto">
+                                <NavItem>
+                                    <NavLinkItem to="/dash">Dashboard</NavLinkItem>
+                                </NavItem>
+                                <NavItem>
+                                    <ExternalLink href={Links.wiki}>Docs</ExternalLink>
+                                </NavItem>
+                                <NavItem>
+                                    <ExternalLink href={Links.code}>Code</ExternalLink>
+                                </NavItem>
+                            </Nav>
+                            <Nav className="ms-auto">
+                                <AccountButtons loggedIn={loggedIn} />
+                            </Nav>
+                        </NavbarCollapse>
+                    </div>
+                </Navbar>
+                {children}
+            </>
+        )
+    }
+
+    const CustomNavbarWithRouter = withRouter(CustomNavbar)
+
+    const Sidebar = () => {
+        const [isOpen, setIsOpen] = useState(true)
+        const toggle = () => setIsOpen(!isOpen)
+        const menuItem = [
+            {
+                path: "/dash",
+                name: "Dashboard",
+                iconClass: "fa-gauge",
+            },
+            {
+                path: "/databases",
+                name: "Databases",
+                iconClass: "fa-database",
+            },
+            {
+                path: "/tables",
+                name: "Tables",
+                iconClass: "fa-table",
+            },
+            {
+                path: "/columns",
+                name: "Columns",
+                iconClass: "fa-table-columns",
+            },
+            {
+                path: "/entries",
+                name: "Entries",
+                iconClass: "fa-cubes",
+            },
+            {
+                path: "/query",
+                name: "Query",
+                iconClass: "fa-magnifying-glass-chart",
+            },
+            {
+                path: "/api",
+                name: "API",
+                iconClass: "fa-diagram-project",
+            },
+        ]
+
+        return (
+            <div
+                style={{ width: isOpen ? "200px" : "50px" }}
+                className={`sidebar ${isOpen ? "open" : ""}`}
+            >
+                <div className="top_section">
+                    <h1 className="logo">
+                        <Link to="/">
+                            <img src={SRC.webUILogo} height="40" alt="Logo" />
+                        </Link>
+                    </h1>
+                    <div style={{ marginLeft: isOpen ? "10px" : "0px" }} className="bars">
+                        <i
+                            className={
+                                isOpen ? "fa-solid fa-circle-arrow-left" : "fa-solid fa-bars"
+                            }
+                            onClick={toggle}
+                            tabIndex={0}
+                        />
+                    </div>
+                </div>
+                <Nav className="flex-column">
+                    {menuItem.map((item, index) => (
+                        <Nav.Link
+                            key={index}
+                            as={Link}
+                            to={item.path}
+                            className={`link ${location.pathname === item.path ? "active" : ""}`}
+                            style={{ width: isOpen ? "auto" : "calc(100% - 1px)" }}
+                            title={item.name}
+                        >
+                            <div className="icon">
+                                <i className={`${item.iconClass} fa-solid me-2`} />
+                            </div>
+                            <div
+                                style={{ display: isOpen ? "block" : "none" }}
+                                className="link_text"
+                            >
+                                {item.name}
+                            </div>
+                        </Nav.Link>
+                    ))}
+                </Nav>
+            </div>
+        )
+    }
+</script>
+<style>
+    body,
+    html {
+        margin: 0;
+        padding: 0;
+        height: 100;
+    }
+
+    .top_section {
+        display: flex;
+        align-items: center;
+        padding: 20px 15px;
+        position: relative; /* Add position relative */
+        z-index: 200; /* Set z-index */
+    }
+
+    .sidebar {
+        background-color: var(--bs-dark);
+        color: var(--bs-light);
+        height: 100vh;
+        width: 300px;
+        transition: all 0.3s;
+        position: relative; /* Add position relative */
+        z-index: 100; /* Set z-index */
+    }
+
+    .link {
+        display: flex;
+        color: var(--bs-light) !important;
+        padding: 10px 15px;
+        gap: 15px;
+        transition: all 0.5s;
+    }
+
+    .link:hover {
+        background-color: var(--bs-info);
+        color: var(--bs-dark) !important;
+        transition: all 0.5s;
+    }
+
+    .active {
+        background-color: var(--bs-info);
+        color: var(--bs-dark) !important;
+        padding: 10px 15px; /* Adjust padding to match .link class */
+        margin: 0; /* Reset margin if necessary */
+        box-sizing: border-box; /* Ensure width includes padding */
+    }
+
+    .bars {
+        display: flex;
+        font-size: 25px;
+        margin-left: 50px;
+        cursor: pointer; /* Set cursor to pointer */
+        transition: margin-left 0.3s ease; /* Add transition property */
+    }
+
+    .bars:hover {
+        cursor: pointer; /* Change cursor to pointer when hovered */
+    }
+
+    .sidebar.open .bars {
+        margin-left: 0; /* Adjust margin when sidebar is open */
+        transition: margin-left 0.5s ease; /* Add transition property */
+    }
+
+    .icon,
+    .link_text {
+        font-size: 20px;
+    }
+
+    .dashboardContainerDiv {
+        display: flex;
+        height: 100vh;
+        overflow: hidden;
+    }
+
+    /* .sidebarDiv {
+        padding: 20px 10px;
+    } */
+
+    .contentDiv {
+        flex: 1;
+        padding: 20px 10px;
+        overflow-y: auto;
+    }
+
+    .contentDiv {
+        flex: 1;
+        padding: 20px 10px;
+        overflow-y: auto;
+    }
+
+    .logo img {
+        transition: opacity 0.5s ease-in-out;
+        opacity: 0;
+        width: 0;
+    }
+
+    .sidebar.open .logo img {
+        opacity: 1;
+        width: auto;
+    }
+</style>
