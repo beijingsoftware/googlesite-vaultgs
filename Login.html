@@ -1,0 +1,124 @@
+<script type="text/babel">
+    const { useState, useContext } = React
+    const { Redirect } = ReactRouterDOM
+
+    function Login() {
+        const { sessionData, updateSessionData } = useContext(AppContext)
+        const [showModal, setShowModal] = useState(false)
+        const [loading, setLoading] = useState(false)
+        const [loggedIn, setLoggedIn] = useState(false)
+        const [user, setUser] = useState(null)
+
+        async function handleLoginSubmit(email, password) {
+            try {
+                setLoading(true)
+                const valid = await Utilities.runScript("validateCredentials", [email, password])
+                const user = await Utilities.runScript("getUserFromEmail", [email])
+                setUser(user)
+
+                if (user.twoFactorAuth) {
+                    setLoading(false)
+                    setShowModal(true)
+                    await Utilities.runScript("emailTwoFactorCode", [email])
+                } else {
+                    await Utilities.runScript("login", [user])
+                    setLoading(false)
+                    setLoggedIn(true)
+                    await updateSessionData()
+                }
+            } catch (error) {
+                setLoading(false)
+                throw error
+            }
+        }
+
+        async function handleEmailCodeSubmit(code) {
+            try {
+                setLoading(true)
+                const email = user.email
+                const result = await Utilities.runScript("validateTwoFactorCode", [email, code])
+                if (result) {
+                    setShowModal(false)
+                    await Utilities.runScript("login", [user])
+                    setLoading(false)
+                    setLoggedIn(true)
+                    await updateSessionData()
+                } else {
+                    throw new Error("Incorrect Two-Factor Code")
+                }
+            } catch (error) {
+                setLoading(false)
+                throw error
+            }
+        }
+
+        return (
+            <>
+                <BlurredBackground imageSrc={SRC.hero}>
+                    <div className="d-flex justify-content-center pt-5">
+                        <LoadingScreen loading={loading} />
+                        <EmailCodeModal
+                            onSubmit={handleEmailCodeSubmit}
+                            showModal={showModal}
+                            setShowModal={setShowModal}
+                        />
+                        <LoginCard onSubmit={handleLoginSubmit} />
+                        {loggedIn && (
+                            <LoggedInModal showModal={loggedIn} setShowModal={setLoggedIn} />
+                        )}
+                    </div>
+                </BlurredBackground>
+            </>
+        )
+    }
+
+    function LoginCard({ onSubmit }) {
+        const [alerts, setAlerts] = useState([])
+        const [email, setEmail] = useState(null)
+        const [password, setPassword] = useState(null)
+
+        async function handleSubmit(e) {
+            e.preventDefault()
+            try {
+                if (!email || !password) throw new Error("Please enter both an email and password")
+                if (password.length < 8)
+                    throw new Error("Password must be at least 8 characters long")
+
+                await onSubmit(email, password)
+            } catch (error) {
+                setAlerts([...alerts, { message: error, color: "danger" }])
+            }
+        }
+
+        const removeAlert = (index) => {
+            setAlerts((prevAlerts) => prevAlerts.filter((_, idx) => idx !== index))
+        }
+
+        return (
+            <div className="card credentials-card" style={{ width: "40rem" }}>
+                <div className="card-header">Log In</div>
+                <div className="card-body">
+                    {alerts.map((alert, index) => (
+                        <AlertMessage
+                            messageText={alert.message}
+                            color={alert.color}
+                            onDismiss={() => removeAlert(index)}
+                        />
+                    ))}
+                    <form id="loginForm" className="mb-2" onSubmit={handleSubmit}>
+                        <EmailInput email={email} setEmail={setEmail} />
+                        <PasswordInput password={password} setPassword={setPassword} />
+                        <div className="text-muted d-flex justify-content-end">
+                            <Link to="/resetPassword" className="glow-link">
+                                Forgot Password?
+                            </Link>
+                        </div>
+                        <button type="submit" className="btn btn-primary">
+                            Submit
+                        </button>
+                    </form>
+                </div>
+            </div>
+        )
+    }
+</script>
