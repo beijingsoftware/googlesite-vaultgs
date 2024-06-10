@@ -1,0 +1,346 @@
+<script type="text/babel">
+    const { Table, Button, Modal, Form } = ReactBootstrap
+
+    const DatabaseView = () => {
+        const { sessionData, updateSessionData, setSessionData, loading } = useContext(AppContext)
+        const [showEditModal, setShowEditModal] = useState(false)
+        const [showAddModal, setShowAddModal] = useState(false)
+        const [selectedDatabase, setSelectedDatabase] = useState(null)
+
+        useEffect(() => {
+            const loadDatabaseView = async () => {
+                if (!sessionData.isDatabaseViewInitialized) {
+                    await setSessionData((prev) => ({
+                        ...prev,
+                        isDatabaseViewInitialized: true,
+                        databaseViewAlerts: [],
+                    }))
+                    await updateDatabaseView()
+                }
+            }
+            loadDatabaseView()
+        }, [sessionData.isDatabaseViewInitialized, setSessionData])
+
+        useEffect(() => {
+            if (sessionData.userData.keys) {
+                updateDatabaseTable()
+            }
+        }, [sessionData.userData.keys]) // Depend on keys to ensure the latest keys are used
+
+        const updateDatabaseView = async () => {
+            try {
+                await updateSessionData()
+                await updateDatabaseTable()
+            } catch (error) {
+                addAlert(error)
+            }
+        }
+
+        const updateDatabaseTable = async () => {
+            const keys = sessionData.userData.keys // Get the latest keys
+
+            const databaseData = await Utilities.runScript("getDatabasesData", [keys])
+            const databaseTable = databaseData.databases.map((db) => [
+                db.name,
+                db.tables.length,
+                db.size,
+                db.key,
+            ])
+
+            databaseTable.unshift(["Database Name", "# of Tables", "# of Entries", "Key"])
+            await setSessionData((prev) => ({
+                ...prev,
+                databaseTable: databaseTable,
+                databaseData: databaseData,
+            }))
+        }
+
+        const addAlert = (error) => {
+            setSessionData((prev) => ({
+                ...prev,
+                databaseViewAlerts: [
+                    ...prev.databaseViewAlerts,
+                    { message: error.message, color: "danger" },
+                ],
+            }))
+        }
+
+        const removeAlert = (index) => {
+            setSessionData((prev) => ({
+                ...prev,
+                databaseViewAlerts: prev.databaseViewAlerts.filter((_, idx) => idx !== index),
+            }))
+        }
+
+        const alerts = sessionData.databaseViewAlerts?.map((alert, index) => (
+            <AlertMessage
+                key={index}
+                messageText={alert.message}
+                color={alert.color}
+                onDismiss={() => removeAlert(index)}
+            />
+        ))
+
+        const refreshButton = (
+            <Button variant="dark" onClick={updateDatabaseView}>
+                <i className="fas fa-sync-alt"></i>
+            </Button>
+        )
+
+        const addButton = (
+            <Button
+                variant="dark"
+                onClick={() => {
+                    setShowAddModal(true)
+                }}
+            >
+                <i className="fa-solid fa-plus"></i>
+            </Button>
+        )
+
+        const handleRowClick = (row) => {
+            setShowEditModal(true)
+
+            const databaseName = row[0]
+            const database = sessionData.databaseData.databases.find((d) => d.name === databaseName)
+
+            setSelectedDatabase(database)
+        }
+
+        return (
+            <Panel headerText="Databases" headerButtons={[addButton, refreshButton]}>
+                {alerts}
+                <LoadingPanel loading={loading} />
+                <AddModal
+                    showAddModal={showAddModal}
+                    setShowAddModal={setShowAddModal}
+                    updateDatabaseView={updateDatabaseView}
+                />
+                <EditModal
+                    showEditModal={showEditModal}
+                    setShowEditModal={setShowEditModal}
+                    databaseData={selectedDatabase}
+                    updateDatabaseView={updateDatabaseView}
+                />
+                <DataTable data={sessionData.databaseTable} onRowClick={handleRowClick} />
+            </Panel>
+        )
+    }
+
+    const AddModal = ({ showAddModal, setShowAddModal, updateDatabaseView }) => {
+        const { sessionData, updateSessionData, setSessionData } = useContext(AppContext)
+        const [alerts, setAlerts] = useState([])
+        const [inputKey, setInputKey] = useState(null)
+        const [loading, setLoading] = useState(false)
+
+        const handleClose = () => {
+            setShowAddModal(false)
+        }
+
+        const handleSubmit = async (e) => {
+            e.preventDefault()
+            setLoading(true)
+            try {
+                if (!inputKey || inputKey.length < 1) {
+                    throw new Error("Please enter a key")
+                }
+                if (sessionData.userData.keys.includes(inputKey)) {
+                    throw new Error("This key is already connected to your account")
+                }
+
+                const data = await Utilities.runScript("getDatabaseData", [inputKey])
+                if (!data) {
+                    throw new Error("Error connecting to this database")
+                }
+
+                var keys = [...sessionData.userData.keys, inputKey]
+                await Utilities.runScript("EVALUATE", [
+                    {
+                        key: Utilities.DB_KEY,
+                        action: "update",
+                        type: "entry",
+                        table: "UserData",
+                        id: sessionData.userData.id,
+                        entry: { keys: keys },
+                    },
+                ])
+
+                await setSessionData((prev) => ({
+                    ...prev,
+                    userData: {
+                        ...prev.userData,
+                        keys: keys,
+                    },
+                }))
+
+                setShowAddModal(false)
+            } catch (error) {
+                setAlerts([...alerts, { message: error.message, color: "danger" }])
+            } finally {
+                setLoading(false)
+            }
+        }
+
+        const removeAlert = (index) => {
+            setAlerts((prevAlerts) => prevAlerts.filter((_, idx) => idx !== index))
+        }
+
+        return (
+            <Modal show={showAddModal} onHide={handleClose} size="lg">
+                <Modal.Header closeButton>
+                    <Modal.Title>Add Database</Modal.Title>
+                </Modal.Header>
+                <Modal.Body>
+                    <LoadingPanel loading={loading} />
+                    {alerts.map((alert, index) => (
+                        <AlertMessage
+                            key={index}
+                            messageText={alert.message}
+                            color={alert.color}
+                            onDismiss={() => removeAlert(index)}
+                        />
+                    ))}
+                    <Form onSubmit={handleSubmit}>
+                        <KeyInput inputKey={inputKey} setInputKey={setInputKey} />
+                        <button type="submit" className="btn btn-primary mt-2" disabled={loading}>
+                            {loading ? "Checking..." : "Add Database"}
+                        </button>
+                    </Form>
+                </Modal.Body>
+            </Modal>
+        )
+    }
+
+    const EditModal = ({ showEditModal, setShowEditModal, databaseData, updateDatabaseView }) => {
+        const { sessionData, updateSessionData, setSessionData } = useContext(AppContext)
+        const [alerts, setAlerts] = useState([])
+        const [name, setName] = useState(databaseData?.name || "")
+        const [loading, setLoading] = useState(true)
+
+        useEffect(() => {
+            if (databaseData) {
+                setName(databaseData.name)
+                setLoading(false)
+            }
+        }, [databaseData])
+
+        const handleClose = () => {
+            setShowEditModal(false)
+        }
+
+        const handleSubmit = async (e) => {
+            e.preventDefault()
+            setLoading(true)
+            try {
+                await Utilities.runScript("EVALUATE", [
+                    {
+                        key: databaseData.key,
+                        action: "update",
+                        type: "database",
+                        name: name,
+                    },
+                ])
+
+                await updateDatabaseView() // Refresh the database view after updating the name
+                setShowEditModal(false) // Close the modal after successful update
+            } catch (error) {
+                setAlerts([...alerts, { message: error.message, color: "danger" }])
+            } finally {
+                setLoading(false)
+            }
+        }
+
+        const onTableClick = async (row) => {}
+
+        const removeDatabase = async (e) => {
+            e.preventDefault()
+            setLoading(true)
+            try {
+                const keyToRemove = databaseData.key
+                var keys = sessionData.userData.keys.filter((key) => key !== keyToRemove)
+                await Utilities.runScript("EVALUATE", [
+                    {
+                        key: Utilities.DB_KEY,
+                        action: "update",
+                        type: "entry",
+                        table: "UserData",
+                        id: sessionData.userData.id,
+                        entry: { keys: keys },
+                    },
+                ])
+
+                await setSessionData((prev) => ({
+                    ...prev,
+                    userData: {
+                        ...prev.userData,
+                        keys: keys,
+                    },
+                }))
+
+                setShowEditModal(false)
+            } catch (error) {
+                setAlerts([...alerts, { message: error.message, color: "danger" }])
+            } finally {
+                setLoading(false)
+            }
+        }
+
+        const removeAlert = (index) => {
+            setAlerts((prevAlerts) => prevAlerts.filter((_, idx) => idx !== index))
+        }
+
+        if (!databaseData) {
+            return (
+                <Modal show={showEditModal} onHide={handleClose} size="lg">
+                    <Modal.Header closeButton>
+                        <Modal.Title>View Database</Modal.Title>
+                    </Modal.Header>
+                    <Modal.Body>
+                        <LoadingPanel loading={true} />
+                    </Modal.Body>
+                </Modal>
+            )
+        }
+
+        var tableData = databaseData.tables.map((t) => {
+            return [t.name, t.size, t.columns.length]
+        })
+
+        tableData.unshift(["Table Name", "Size", "# of Columns"])
+
+        return (
+            <Modal show={showEditModal} onHide={handleClose} size="lg">
+                <Modal.Header closeButton>
+                    <Modal.Title>View Database</Modal.Title>
+                </Modal.Header>
+                <Modal.Body>
+                    <LoadingPanel loading={loading} />
+                    {alerts.map((alert, index) => (
+                        <AlertMessage
+                            key={index}
+                            messageText={alert.message}
+                            color={alert.color}
+                            onDismiss={() => removeAlert(index)}
+                        />
+                    ))}
+                    <Form onSubmit={handleSubmit}>
+                        <NameInput name={name} setName={setName} />
+                        <button type="submit" className="btn btn-primary mt-2" disabled={loading}>
+                            {loading ? "Updating..." : "Change Name"}
+                        </button>
+                    </Form>
+                    <hr />
+                    <h4>Key: {databaseData.key}</h4>
+                    <hr />
+                    <h4>Tables</h4>
+                    <DataTable data={tableData} onRowClick={onTableClick} />
+                </Modal.Body>
+                <Modal.Footer>
+                    <button className="btn btn-primary mt-2" onClick={removeDatabase}>
+                        Remove
+                    </button>
+                </Modal.Footer>
+            </Modal>
+        )
+    }
+</script>
